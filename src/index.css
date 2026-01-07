@@ -1,0 +1,67 @@
+@import "tailwindcss";
+
+@layer base {
+  body {
+    /* Brand background: Light Slate */
+    @apply bg-slate-50 text-slate-900;
+    font-family: 'Inter', sans-serif;
+    /* Soft ambient blue aura */
+    background-image: radial-gradient(circle at 50% 0%, rgba(14, 165, 233, 0.15) 0%, transparent 60%);
+    min-height: 100vh;
+  }
+}
+
+/* Brand Utilities */
+.text-brand-primary {
+  color: #0EA5E9;
+}
+
+.bg-brand-primary {
+  background-color: #0EA5E9;
+}
+
+.hover\:bg-brand-primary-dark:hover {
+  background-color: #0284C7;
+}
+
+.border-brand-primary {
+  border-color: #0EA5E9;
+}
+
+.shadow-brand-glow {
+  box-shadow: 0 0 40px -10px rgba(14, 165, 233, 0.3);
+}
+
+@keyframes float {
+  0% {
+    transform: translateY(0px);
+  }
+
+  50% {
+    transform: translateY(-10px);
+  }
+
+  100% {
+    transform: translateY(0px);
+  }
+}
+
+@keyframes fly-in {
+  0% {
+    opacity: 0;
+    transform: translateY(20px) scale(0.9);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.animate-float {
+  animation: float 4s ease-in-out infinite;
+}
+
+.animate-fly-in {
+  animation: fly-in 1s ease-out forwards;
+}
