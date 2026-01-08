@@ -1,10 +1,10 @@
 // -----------------------------------------------------------------------
-// REPLACEMENT FOR YOUR GOOGLE APPS SCRIPT (Merges Old Logic + New Drive Logic)
+// CLOUD AI LABS - BACKEND SCRIPT (Monitor Groups + Drive Uploads)
 // -----------------------------------------------------------------------
-
 const SHEET_USERS = "Student Activity";
 const SHEET_LOGS = "Activity Logs";
 const SHEET_PROFILES = "Student Profiles";
+const SHEET_GROUPS = "Groups"; // [NEW] Read from 'Groups' tab
 
 // [IMPORTANT] PASTE YOUR DRIVE FOLDER ID HERE
 const DRIVE_FOLDER_ID = "12cULjLm5qkvVS50tG2obJHQjpdpemfp0";
@@ -18,6 +18,8 @@ function doGet(e) {
         return getHistory(e.parameter.name);
     } else if (action === "getProfile") {
         return getProfile(e.parameter.name);
+    } else if (action === "getGroups") { // [NEW] Endpoint
+        return getMonitorGroups();
     }
 }
 
@@ -36,7 +38,7 @@ function doPost(e) {
         const action = data.action;
 
         if (action === "submitLog") {
-            return submitLog(data); // Updated to handle File Upload
+            return submitLog(data);
         } else if (action === "saveProfile") {
             return saveProfile(data);
         }
@@ -50,6 +52,45 @@ function doPost(e) {
     }
 }
 
+// --- NEW FUNCTION: GET MONITOR GROUPS ---
+function getMonitorGroups() {
+    var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_GROUPS);
+    // Return empty if sheet doesn't exist
+    if (!sheet) return ContentService.createTextOutput(JSON.stringify([])).setMimeType(ContentService.MimeType.JSON);
+
+    var lastRow = sheet.getLastRow();
+    if (lastRow < 2) return ContentService.createTextOutput(JSON.stringify([])).setMimeType(ContentService.MimeType.JSON);
+
+    // Read from Row 2 (Headers) down to last row
+    // Assuming 10 columns (B to K) roughly. We'll grab 20 columns to be safe.
+    var data = sheet.getRange(2, 2, lastRow - 1, 20).getValues();
+
+    var groups = [];
+    var headers = data[0]; // Row 2 acts as header
+
+    for (var col = 0; col < headers.length; col++) {
+        var monitorName = headers[col];
+        if (!monitorName || monitorName === "") continue;
+
+        var members = [];
+        for (var row = 1; row < data.length; row++) {
+            var memberName = data[row][col];
+            if (memberName && memberName !== "") {
+                members.push(memberName);
+            }
+        }
+
+        groups.push({
+            monitor: monitorName,
+            members: members
+        });
+    }
+
+    return ContentService.createTextOutput(JSON.stringify(groups)).setMimeType(ContentService.MimeType.JSON);
+}
+
+// --- EXISTING DATA FUNCTIONS ---
+
 function getUsers() {
     const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_USERS);
     if (!sheet || sheet.getLastRow() < 2) return ContentService.createTextOutput(JSON.stringify([])).setMimeType(ContentService.MimeType.JSON);
@@ -62,7 +103,7 @@ function getUsers() {
         status: row[2],
         role: "user"
     }));
-    users.push({ name: "Admin", internId: "admin123", role: "admin", status: "Active" });
+    users.push({ name: "CIAL-Admin", internId: "CIALAbhayAkhil@2025", role: "admin", status: "Active" });
     return ContentService.createTextOutput(JSON.stringify(users))
         .setMimeType(ContentService.MimeType.JSON);
 }
@@ -207,47 +248,13 @@ function uploadToDriveFolder(folder, base64String, fileName) {
 
     const bytes = Utilities.base64Decode(base64Data);
     const blob = Utilities.newBlob(bytes, contentType, fileName);
-
     const file = folder.createFile(blob);
+
+    // [New] Ensure file is publicly viewable (optional, but good for embedding)
     file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    Utilities.sleep(500); // Wait for sharing to propagate
 
-    Utilities.sleep(500); // Sync wait
-
-    return "https://lh3.googleusercontent.com/d/" + file.getId(); // Return URL
-}
-
-
-// ------------------------------------------------------------------
-// RUN THIS FUNCTION MANUALLY ONCE TO FIX YOUR SHEET HEADERS & LOOK
-// ------------------------------------------------------------------
-function fixMissingHeaders() {
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
-
-    const formatSheet = (sheetName, headers) => {
-        let sheet = ss.getSheetByName(sheetName);
-        if (!sheet) return;
-
-        const firstVal = sheet.getRange(1, 1).getValue();
-        if (firstVal !== headers[0]) {
-            sheet.insertRowBefore(1);
-        }
-
-        const range = sheet.getRange(1, 1, 1, headers.length);
-        range.setValues([headers]);
-
-        range.setFontWeight("bold")
-            .setBackground("#4285F4") // Google Blue
-            .setFontColor("white")
-            .setHorizontalAlignment("center")
-            .setVerticalAlignment("middle");
-
-        sheet.setRowHeight(1, 45);
-        sheet.setFrozenRows(1);
-
-        sheet.autoResizeColumns(1, headers.length);
-    };
-
-    formatSheet(SHEET_PROFILES, ["Name", "Bio", "Photo"]);
-    formatSheet(SHEET_LOGS, ["Name", "Date", "Category", "Summary", "Proof", "File"]);
-    formatSheet(SHEET_USERS, ["Name", "Intern ID", "Status"]);
+    // Use the thumbnail link endpoint which is more friendly for embedding
+    // &sz=w1000 ensures we get a high-quality "poster" image
+    return "https://drive.google.com/thumbnail?id=" + file.getId() + "&sz=w1000";
 }

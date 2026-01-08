@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Upload, CheckCircle2, Clock, LogOut, LayoutDashboard, History, FileText, ChevronRight, User, Briefcase, BarChart3, Search, Instagram, Linkedin, Paperclip, AlertTriangle, X, Camera, Lock, RefreshCw } from 'lucide-react';
+import { Upload, CheckCircle2, Clock, LogOut, LayoutDashboard, History, FileText, ChevronRight, User, Briefcase, BarChart3, Search, Instagram, Linkedin, Paperclip, AlertTriangle, X, Camera, Lock, RefreshCw, Info, HelpCircle, Users, Eye, EyeOff } from 'lucide-react';
 import logo from './assets/logo.png';
 
 import { api } from './services/api';
@@ -33,6 +33,41 @@ const formatDateForDisplay = (dateString) => {
   }
   return dateString; // Return as-is if already formatted
 };
+
+const getTimeBasedGreeting = (name) => {
+  if (!name) return "Welcome Back 👋"; // Safety Check
+  const hour = new Date().getHours();
+  if (hour < 5) return `Burning the midnight oil, ${name}? 🦉`;
+  if (hour < 12) return `Good Morning, ${name} ☀️`;
+  if (hour < 17) return `Good Afternoon, ${name} 👋`;
+  if (hour < 22) return `Good Evening, ${name} 🌙`;
+  return `Late night hustle, ${name}? 🚀`;
+};
+
+const getRandomSubtitle = () => {
+  const subtitles = [
+    "What did you accomplish today?",
+    "Time to log your wins.",
+    "Did you learn something new today?",
+    "Let's capture your progress.",
+    "Turning effort into history.",
+    "Ready to document your day?"
+  ];
+  return subtitles[Math.floor(Math.random() * subtitles.length)];
+};
+
+const getRandomSuccessMessage = () => {
+  const messages = [
+    "Boom! Another day, another victory! 🚀",
+    "Solid work today. Keep that streak alive! 🔥",
+    "Log saved. You are crushing it!",
+    "That's how it's done! 👊",
+    "Progress recorded. See you tomorrow! ✨"
+  ];
+  return messages[Math.floor(Math.random() * messages.length)];
+};
+
+
 
 
 /* --- API HELPERS --- */
@@ -70,7 +105,33 @@ export async function fetchAllMembers() {
 
 /* --- COMPONENTS --- */
 
-class ErrorBoundary extends React.Component {
+/* --- CUSTOM HOOK: IDLE TIMER --- */
+const useIdleTimer = (onIdle, idleTime = 1800000) => { // Default 30 minutes
+  useEffect(() => {
+    let timer;
+    const resetTimer = () => {
+      clearTimeout(timer);
+      timer = setTimeout(onIdle, idleTime);
+    };
+
+    // Events to listen for activity
+    const events = ['mousemove', 'keydown', 'click', 'scroll', 'touchstart'];
+
+    // Attach listeners
+    events.forEach(event => window.addEventListener(event, resetTimer));
+
+    // Start timer initially
+    resetTimer();
+
+    // Cleanup
+    return () => {
+      clearTimeout(timer);
+      events.forEach(event => window.removeEventListener(event, resetTimer));
+    };
+  }, [onIdle, idleTime]);
+};
+
+class SectionErrorBoundary extends React.Component {
   constructor(props) {
     super(props);
     this.state = { hasError: false };
@@ -81,7 +142,7 @@ class ErrorBoundary extends React.Component {
   }
 
   componentDidCatch(error, errorInfo) {
-    console.error("Profile Error:", error, errorInfo);
+    console.error("Section Error:", error, errorInfo);
   }
 
   render() {
@@ -90,7 +151,66 @@ class ErrorBoundary extends React.Component {
         <div className="p-8 text-center bg-white rounded-3xl shadow-sm border border-slate-100">
           <h2 className="text-xl font-bold text-slate-800 mb-2">Something went wrong</h2>
           <p className="text-slate-500 mb-4 text-sm">We couldn't load this section.</p>
-          <button onClick={this.props.onReset} className="px-4 py-2 bg-slate-900 text-white font-bold rounded-xl text-sm">Go Back</button>
+          <button onClick={() => this.setState({ hasError: false })} className="px-4 py-2 bg-slate-900 text-white font-bold rounded-xl text-sm">Try Again</button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+class GlobalErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    console.error("Global Application Error:", error, errorInfo);
+  }
+
+  handleReset = () => {
+    this.setState({ hasError: false, error: null });
+    window.location.reload();
+  };
+
+  handleHardReset = () => {
+    localStorage.clear();
+    window.location.href = '/';
+  };
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4">
+          <div className="max-w-md w-full bg-white rounded-3xl shadow-xl p-8 text-center border border-slate-100">
+            <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-6">
+              <AlertTriangle className="w-8 h-8 text-red-500" />
+            </div>
+            <h2 className="text-2xl font-bold text-slate-900 mb-2">Application Error</h2>
+            <p className="text-slate-500 mb-6 text-sm">Something went wrong. Try reloading or resetting.</p>
+            <div className="bg-slate-50 p-4 rounded-xl text-left mb-6 overflow-auto max-h-32">
+              <code className="text-xs text-slate-600 break-all font-mono">{this.state.error?.toString()}</code>
+            </div>
+            <div className="flex flex-col gap-3">
+              <button
+                onClick={this.handleReset}
+                className="w-full py-3 bg-slate-900 text-white font-bold rounded-xl hover:bg-black transition-colors"
+              >
+                <RefreshCw className="w-4 h-4 inline mr-2" /> Reload Application
+              </button>
+              <button
+                onClick={this.handleHardReset}
+                className="w-full py-3 bg-white text-red-600 border border-red-200 font-bold rounded-xl hover:bg-red-50 transition-colors"
+              >
+                <LogOut className="w-4 h-4 inline mr-2" /> Reset Data & Logout
+              </button>
+            </div>
+          </div>
         </div>
       );
     }
@@ -107,6 +227,7 @@ const LoginScreen = ({ onLogin, users }) => {
 
   /* --- CHANGED: Autocomplete Logic --- */
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [showPassword, setShowPassword] = useState(false); // NEW: Password Visibility State
 
   const filteredUsers = users.filter(u =>
     u.role !== 'admin' && u.name.toLowerCase().includes(name.toLowerCase())
@@ -200,12 +321,19 @@ const LoginScreen = ({ onLogin, users }) => {
               <label className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">Intern ID</label>
               <div className="relative group">
                 <input
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   value={internId}
                   onChange={(e) => setInternId(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full px-4 py-4 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none transition-all placeholder:text-slate-300 font-medium group-hover:bg-white group-hover:shadow-sm"
+                  className="w-full px-4 py-4 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none transition-all placeholder:text-slate-300 font-medium group-hover:bg-white group-hover:shadow-sm pr-12"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-sky-600 transition-colors"
+                >
+                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                </button>
               </div>
             </div>
 
@@ -255,6 +383,13 @@ const Dashboard = ({ user, onLogout, onUpdateProfile }) => {
 
   // --- SMART LOCK LOGIC ---
   const [lockStatus, setLockStatus] = useState({ locked: false, reason: 'idle' });
+  const [randomSuccessMsg, setRandomSuccessMsg] = useState("");
+  const [greetingSubtitle, setGreetingSubtitle] = useState("");
+  const [showRules, setShowRules] = useState(false);
+
+  useEffect(() => {
+    setGreetingSubtitle(getRandomSubtitle());
+  }, []); // Run once on mount
 
   useEffect(() => {
     // 1. Get Latest Log Time
@@ -354,26 +489,36 @@ const Dashboard = ({ user, onLogout, onUpdateProfile }) => {
               </div>
             </div>
 
+            {/* Dynamic Greeting (Tablet/Desktop) */}
+            <div className="hidden md:block text-center absolute left-1/2 -translate-x-1/2">
+              <h2 className="text-sm font-bold text-slate-800">{user?.name ? getTimeBasedGreeting(user.name.split(' ')[0]) : 'Welcome'}</h2>
+              <p className="text-[10px] text-slate-400 font-medium uppercase tracking-widest">{greetingSubtitle}</p>
+            </div>
+
             <div className="flex items-center gap-4">
               <button
                 onClick={() => setView('profile')}
-                className="hidden md:flex items-center gap-3 px-4 py-2 bg-slate-50 rounded-full border border-slate-200/60 shadow-sm hover:shadow-md transition-shadow group cursor-pointer"
+                className="flex items-center gap-3 px-3 md:px-4 py-2 bg-slate-50 rounded-full border border-slate-200/60 shadow-sm hover:shadow-md transition-shadow group cursor-pointer"
               >
-                <div className="w-8 h-8 bg-sky-100 rounded-full flex items-center justify-center text-sky-700 font-bold text-xs ring-2 ring-white overflow-hidden">
-                  {/* Show Profile Photo if available locally, else Initial */}
-                  {localStorage.getItem(`photo_${user.name}`) ? (
-                    <img src={localStorage.getItem(`photo_${user.name}`)} alt={user.name} className="w-full h-full object-cover" />
+                <div className="w-8 h-8 bg-sky-100 rounded-full flex items-center justify-center text-sky-700 font-bold text-xs ring-2 ring-white overflow-hidden shrink-0">
+                  {/* Sync Photo Logic: Prioritize User Prop (State), then LocalStorage */}
+                  {user.photo || localStorage.getItem(`photo_${user.name}`) ? (
+                    <img src={user.photo || localStorage.getItem(`photo_${user.name}`)} alt={user.name} className="w-full h-full object-cover" />
                   ) : user.name.charAt(0)}
                 </div>
-                <span className="text-sm font-semibold text-slate-700 pr-1 group-hover:text-sky-600 transition-colors">{user.name}</span>
+                <span className="text-sm font-semibold text-slate-700 pr-1 group-hover:text-sky-600 transition-colors hidden sm:inline-block">{user.name}</span>
               </button>
-              <button
-                onClick={onLogout}
-                className="p-2.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all border border-transparent hover:border-red-100"
-                title="Logout"
-              >
-                <LogOut className="w-5 h-5" />
-              </button>
+
+              {/* Hide Logout when in Profile View */}
+              {view === 'dashboard' && (
+                <button
+                  onClick={onLogout}
+                  className="p-2.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all border border-transparent hover:border-red-100"
+                  title="Logout"
+                >
+                  <LogOut className="w-5 h-5" />
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -382,9 +527,9 @@ const Dashboard = ({ user, onLogout, onUpdateProfile }) => {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 flex-grow">
 
         {view === 'profile' ? (
-          <ErrorBoundary onReset={() => setView('dashboard')}>
+          <SectionErrorBoundary onReset={() => setView('dashboard')}>
             <ProfileSection user={user} onBack={() => setView('dashboard')} onUpdate={user.role !== 'admin' ? onUpdateProfile : null} />
-          </ErrorBoundary>
+          </SectionErrorBoundary>
         ) : (
           <>
             {/* --- NEW: Premium Welcome Loading Screen --- */
@@ -403,6 +548,15 @@ const Dashboard = ({ user, onLogout, onUpdateProfile }) => {
 
             {/* Welcome & Stats */}
             <div className="animate-in fade-in slide-in-from-bottom-4 duration-700 ease-out">
+
+              {/* Main Greeting Block */}
+              <div className="mb-8">
+                <h1 className="text-3xl font-bold text-slate-900 bg-clip-text text-transparent bg-gradient-to-r from-slate-900 to-slate-700 mb-2">
+                  {getTimeBasedGreeting(user.name)}
+                </h1>
+                <p className="text-slate-500 font-medium text-lg">{greetingSubtitle}</p>
+              </div>
+
               <div className="flex justify-between items-end mb-6">
                 <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Overview</h2>
                 <p className="text-sm font-medium text-slate-500">Last updated: Just now</p>
@@ -461,11 +615,42 @@ const Dashboard = ({ user, onLogout, onUpdateProfile }) => {
                         <FileText className="w-4 h-4" />
                       </span>
                       Submit Daily Log
+                      <button
+                        onClick={() => setShowRules(!showRules)}
+                        className="ml-2 text-slate-300 hover:text-sky-500 transition-colors"
+                        title="View Submission Rules"
+                      >
+                        <HelpCircle className="w-5 h-5" />
+                      </button>
                     </h3>
                     <span className="text-xs font-bold px-3 py-1.5 bg-slate-50 text-slate-600 rounded-lg border border-slate-200">
                       {new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
                     </span>
                   </div>
+
+                  {/* Rules Info Panel */}
+                  {showRules && (
+                    <div className="bg-sky-50/50 border-b border-sky-100 px-8 py-6 animate-in slide-in-from-top-2">
+                      <h4 className="font-bold text-sky-900 text-sm mb-3 flex items-center gap-2">
+                        <Info className="w-4 h-4" /> Submission Protocol
+                      </h4>
+                      <ul className="space-y-3">
+                        <li className="flex gap-3 text-sm text-sky-800/80">
+                          <div className="w-1.5 h-1.5 rounded-full bg-sky-400 mt-1.5 shrink-0"></div>
+                          <span><strong>One Log Per Day:</strong> Users can only submit one activity log per calendar day.</span>
+                        </li>
+                        <li className="flex gap-3 text-sm text-sky-800/80">
+                          <div className="w-1.5 h-1.5 rounded-full bg-sky-400 mt-1.5 shrink-0"></div>
+                          <span><strong>12-Hour Reset:</strong> To prevent midnight spamming, a 12-hour cooldown applies between submissions. (e.g. If you submit at 11 PM, you cannot submit again at 12:01 AM).</span>
+                        </li>
+                        <li className="flex gap-3 text-sm text-sky-800/80">
+                          <div className="w-1.5 h-1.5 rounded-full bg-sky-400 mt-1.5 shrink-0"></div>
+                          <span><strong>Quality First:</strong> Brief, specific updates are better than long essays. Focus on what was learned or built.</span>
+                        </li>
+                      </ul>
+                    </div>
+                  )}
+
                   <div className="p-8">
                     {lockStatus.locked ? (
                       <div className="text-center py-12 flex flex-col items-center">
@@ -484,7 +669,7 @@ const Dashboard = ({ user, onLogout, onUpdateProfile }) => {
                           </div>
                         ) : (
                           <p className="text-slate-500 max-w-sm mx-auto mb-8">
-                            Great job! You've successfully recorded your activity today. Come back tomorrow to keep your streak alive.
+                            {randomSuccessMsg || getRandomSuccessMessage()}
                           </p>
                         )}
 
@@ -823,31 +1008,46 @@ const CategoryBadge = ({ category }) => {
 
 const ProfileSection = ({ user, onBack, onUpdate }) => {
   const [bio, setBio] = useState(user.bio || '');
+  const [initialBio, setInitialBio] = useState(user.bio || ''); // NEW: Track initial for validation
   const [photo, setPhoto] = useState(user.photo || null);
   const [reportReason, setReportReason] = useState('');
   const [showReportModal, setShowReportModal] = useState(false);
-  const [reportStatus, setReportStatus] = useState('idle'); // idle, submitting, success
-  const [saveStatus, setSaveStatus] = useState('idle'); // idle, saving, saved
+  const [reportStatus, setReportStatus] = useState('idle');
+  const [saveStatus, setSaveStatus] = useState('idle');
+  const [photoStatus, setPhotoStatus] = useState('idle'); // NEW: idle, uploading
+  const [validationError, setValidationError] = useState(''); // NEW: For empty save
 
   const handlePhotoUpload = async (e) => {
     const file = e.target.files[0];
     if (file) {
+      setPhotoStatus('uploading'); // Start Loading
+
+      // 1. Create a memory-safe preview URL (Blob)
+      // This is instant and takes 0 extra memory (fixes mobile crash)
+      const objectUrl = URL.createObjectURL(file);
+
+      // 2. Optimistic Update (Show instantly in UI, but DO NOT save to LocalStorage yet)
+      setPhoto(objectUrl);
+      if (onUpdate) onUpdate({ photo: objectUrl }, false);
+
+      // Artificial delay for visual feedback (as requested)
+      await new Promise(r => setTimeout(r, 1500));
+
+      setPhotoStatus('idle'); // Stop Loading / Show New Photo
+
+      // 3. Upload to Backend & Get Real Drive URL
+      // We pass the RAW FILE, not base64, which is much better for the API
+      // Note: We need to convert to base64 ONLY for the Google Script if it doesn't support raw blobs directly,
+      // but for the UI we keep it light.
       const reader = new FileReader();
       reader.onloadend = async () => {
-        const newPhoto = reader.result;
-        setPhoto(newPhoto);
-        if (onUpdate) onUpdate({ photo: newPhoto }); // Optimistic Local Update (Base64)
+        const base64ForApi = reader.result;
+        const result = await api.saveProfile({ name: user.name, bio, photo: base64ForApi });
 
-        // Save to backend & Get Drive URL
-        const result = await api.saveProfile({ name: user.name, bio, photo: newPhoto });
-
-        // If successful, update state with the PERMANENT Drive URL to free up memory
+        // 4. Confirmed Update (Save real URL to LocalStorage)
         if (result.success && result.photo) {
           setPhoto(result.photo);
-          if (onUpdate) onUpdate({ photo: result.photo });
-
-          // Also update LocalStorage with the clean URL, not the heavy Base64
-          localStorage.setItem(`photo_${user.name}`, result.photo);
+          if (onUpdate) onUpdate({ photo: result.photo }, true);
         }
       };
       reader.readAsDataURL(file);
@@ -855,6 +1055,13 @@ const ProfileSection = ({ user, onBack, onUpdate }) => {
   };
 
   const saveBio = async () => {
+    // 1. Validation: Check if changes were made
+    if (bio.trim() === initialBio.trim()) {
+      setValidationError("Please update anything for saving the profile");
+      setTimeout(() => setValidationError(''), 3000); // Clear after 3s
+      return;
+    }
+
     setSaveStatus('saving');
     // Save to App State
     if (onUpdate) onUpdate({ bio });
@@ -862,6 +1069,7 @@ const ProfileSection = ({ user, onBack, onUpdate }) => {
     const result = await api.saveProfile({ name: user.name, bio, photo });
     if (result.success) {
       setSaveStatus('saved');
+      setInitialBio(bio); // Reset initial state to current
       setTimeout(() => setSaveStatus('idle'), 3000);
     }
   };
@@ -900,14 +1108,27 @@ const ProfileSection = ({ user, onBack, onUpdate }) => {
             <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-br from-sky-400 to-blue-600"></div>
 
             <div className="relative z-10 mt-12 mx-auto w-32 h-32 rounded-full border-4 border-white shadow-lg overflow-hidden bg-white group-hover:scale-105 transition-transform duration-300">
-              {photo ? (
+              {/* Photo or Loader */}
+              {photoStatus === 'uploading' ? (
+                <div className="w-full h-full flex flex-col items-center justify-center bg-slate-900/80 text-white backdrop-blur-sm">
+                  <div className="w-8 h-8 border-2 border-white/30 border-t-white rounded-full animate-spin mb-2"></div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-center px-2">Updating...</span>
+                </div>
+              ) : photo ? (
                 <img src={photo} alt="Profile" className="w-full h-full object-cover" />
               ) : (
                 <div className="w-full h-full flex items-center justify-center bg-slate-100 text-slate-400 text-4xl font-bold">{user.name.charAt(0)}</div>
               )}
-              <label className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer text-white">
-                <Camera className="w-8 h-8" />
-                <input type="file" className="hidden" onChange={handlePhotoUpload} accept="image/*" />
+            </div>
+
+            {/* Update Photo Button */}
+            <div className="mt-4 flex justify-center">
+              <label className="cursor-pointer">
+                <input type="file" className="hidden" onChange={handlePhotoUpload} accept="image/*" disabled={photoStatus === 'uploading'} />
+                <div className="flex items-center gap-2 px-4 py-2 bg-sky-50 text-sky-600 rounded-xl hover:bg-sky-100 transition-colors text-xs font-bold ring-1 ring-sky-100">
+                  <Camera className="w-3.5 h-3.5" />
+                  {photoStatus === 'uploading' ? 'Uploading...' : 'Update Photo'}
+                </div>
               </label>
             </div>
 
@@ -944,7 +1165,13 @@ const ProfileSection = ({ user, onBack, onUpdate }) => {
                   placeholder="Tell us about yourself..."
                 ></textarea>
               </div>
-              <div className="flex justify-end">
+              <div className="flex flex-col items-end gap-3">
+                {/* Validation Error Message */}
+                {validationError && (
+                  <div className="text-red-500 text-xs font-bold bg-red-50 px-3 py-1.5 rounded-lg border border-red-100 animate-in slide-in-from-right-2 fade-in">
+                    {validationError}
+                  </div>
+                )}
                 <button
                   onClick={saveBio}
                   disabled={saveStatus === 'saving' || saveStatus === 'saved'}
@@ -1015,11 +1242,107 @@ const ProfileSection = ({ user, onBack, onUpdate }) => {
 
 const AdminDashboard = ({ user, onLogout }) => {
   const [members, setMembers] = useState([]);
+  const [groups, setGroups] = useState([]); // New Groups Sate
+  const [view, setView] = useState('overview'); // 'overview' | 'monitors'
+  const [selectedGroup, setSelectedGroup] = useState(null); // Drill-down state
+  const [selectedMember, setSelectedMember] = useState(null); // For Modal
+  const [memberHistory, setMemberHistory] = useState([]); // Logs for modal
+  const [loadingHistory, setLoadingHistory] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  /* --- CHANGED: Filter by Selected Group + Search --- */
+  /* --- CHANGED: Ultra-Robust Name Matching --- */
+  const normalize = (str) => {
+    if (!str) return "";
+    return String(str).toLowerCase().replace(/[^a-z0-9]/g, "");
+  };
+
+  // Helper to find a user object based on the Group Sheet name string
+  // Expected format: "Name - Location" or just "Name"
+  const findUserForGroupMember = (groupMemberStr) => {
+    if (!groupMemberStr) return null;
+    const nGroup = normalize(groupMemberStr);
+
+    // 1. Exact Match (Best)
+    let match = members.find(m => normalize(m.name) === nGroup);
+    if (match) return match;
+
+    // 2. Hyphen Split (Handle "Name - Location")
+    const simpleNameRaw = groupMemberStr.split('-')[0].trim();
+    const nSimple = normalize(simpleNameRaw);
+    match = members.find(m => normalize(m.name) === nSimple);
+    if (match) return match;
+
+    // 3. Reverse Check: Does the User Sheet Name *contain* the Group Name?
+    // User: "Aman Kumar", Group: "Aman" -> Match!
+    match = members.find(m => normalize(m.name).includes(nSimple));
+    if (match) return match;
+
+    // 4. First Name Match (Aggressive Fallback)
+    // Group: "Karan Bhardwarj", User: "Karan Bhardwaj" -> Match on "Karan"
+    // Only do this if the first name is significant (e.g., > 3 chars) to avoid false positives with "Al" vs "Alex"
+    const firstName = simpleNameRaw.split(' ')[0].trim();
+    if (firstName.length >= 3) {
+      const nFirst = normalize(firstName);
+      // Find a user whose name starts with this first name
+      match = members.find(m => normalize(m.name).startsWith(nFirst));
+      if (match) return match;
+    }
+
+    // 5. Permutation Match (Handle "Doe John" vs "John Doe")
+    // Split both names into parts and check if they contain the same words
+    const groupParts = simpleNameRaw.toLowerCase().split(' ').filter(p => p.length > 2); // Ignore short words
+    if (groupParts.length > 1) {
+      match = members.find(m => {
+        const userParts = m.name.toLowerCase().split(' ');
+        // Check if EVERY significant part of the group name exists in the user name
+        return groupParts.every(gp => userParts.some(up => up.includes(gp) || gp.includes(up)));
+      });
+      if (match) return match;
+    }
+
+    return null;
+  };
+
+  // filteredMembers is ONLY used for Overview or Search matches now.
+  // For Drill-down, we will map selectedGroup.members directly.
+  const filteredMembers = members.filter(m =>
+    m.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    m.internId.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const handleViewLogs = async (member) => {
+    setSelectedMember(member);
+    setLoadingHistory(true);
+    try {
+      const history = await fetchStudentHistory(member.name);
+      setMemberHistory(history);
+    } catch (e) {
+      console.error(e);
+    }
+    setLoadingHistory(false);
+  };
 
   useEffect(() => {
     fetchAllMembers().then(data => {
-      setMembers(data);
+      // Filter out placeholder/header rows from the Sheet
+      const validMembers = data.filter(m =>
+        m.name &&
+        !m.name.includes("Student Name") &&
+        m.internId !== "Intern ID"
+      );
+      setMembers(validMembers);
+
+      // Fetch Groups
+      api.fetchGroups().then(gData => {
+        const sortedGroups = gData.map(g => ({
+          ...g,
+          members: [...g.members].sort((a, b) => a.localeCompare(b))
+        }));
+        setGroups(sortedGroups);
+      });
+
       setLoading(false);
     });
   }, []);
@@ -1030,30 +1353,46 @@ const AdminDashboard = ({ user, onLogout }) => {
       <nav className="bg-slate-900 text-white border-b border-slate-800 sticky top-0 z-30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16 py-3">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 bg-white/10 rounded-lg flex items-center justify-center border border-white/20">
-                <LayoutDashboard className="w-5 h-5 text-purple-400" />
-              </div>
+            <div className="flex items-center gap-4">
+              <img src={logo} alt="Logo" className="w-12 h-12 object-contain" />
               <div>
                 <h1 className="text-xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent leading-none tracking-tight">Admin Console</h1>
                 <p className="text-xs text-slate-400 font-medium mt-0.5 tracking-wide uppercase">CloudAiLabs</p>
               </div>
             </div>
 
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-3 px-4 py-1.5 bg-white/5 rounded-full border border-white/10">
-                <div className="w-7 h-7 bg-purple-500 rounded-full flex items-center justify-center text-white font-bold text-xs">
-                  {user.name.charAt(0)}
-                </div>
-                <span className="text-sm font-semibold text-slate-200 pr-1">{user.name}</span>
+            <div className="flex items-center gap-6">
+              {/* Navigation Links */}
+              <div className="hidden md:flex items-center gap-1 bg-slate-800/50 p-1 rounded-xl border border-slate-700">
+                <button
+                  onClick={() => setView('overview')}
+                  className={`px-4 py-1.5 rounded-lg text-sm font-bold transition-all ${view === 'overview' ? 'bg-slate-700 text-white shadow-sm' : 'text-slate-400 hover:text-white'}`}
+                >
+                  Overview
+                </button>
+                <button
+                  onClick={() => setView('monitors')}
+                  className={`px-4 py-1.5 rounded-lg text-sm font-bold transition-all ${view === 'monitors' ? 'bg-slate-700 text-white shadow-sm' : 'text-slate-400 hover:text-white'}`}
+                >
+                  Monitors
+                </button>
               </div>
-              <button
-                onClick={onLogout}
-                className="p-2 text-slate-400 hover:text-white hover:bg-white/10 rounded-lg transition-all"
-                title="Logout"
-              >
-                <LogOut className="w-5 h-5" />
-              </button>
+
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-3 px-4 py-1.5 bg-white/5 rounded-full border border-white/10">
+                  <div className="w-7 h-7 bg-purple-500 rounded-full flex items-center justify-center text-white font-bold text-xs">
+                    {user.name.charAt(0)}
+                  </div>
+                  <span className="text-sm font-semibold text-slate-200 pr-1">{user.name}</span>
+                </div>
+                <button
+                  onClick={onLogout}
+                  className="p-2 text-slate-400 hover:text-white hover:bg-white/10 rounded-lg transition-all"
+                  title="Logout"
+                >
+                  <LogOut className="w-5 h-5" />
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -1061,107 +1400,352 @@ const AdminDashboard = ({ user, onLogout }) => {
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
 
-        {/* Stats Row */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-            <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Total Members</p>
-            <h3 className="text-3xl font-extrabold text-slate-900">{members.length}</h3>
-          </div>
-          <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-            <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Certificate Eligible</p>
-            <h3 className="text-3xl font-extrabold text-slate-900">{members.filter(m => m.daysCompleted >= 90).length}</h3>
-          </div>
-          <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-            <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Active Today</p>
-            <h3 className="text-3xl font-extrabold text-slate-900">
-              {members.filter(m => m.history.some(h => new Date(h.date).toDateString() === new Date().toDateString())).length}
-            </h3>
-          </div>
-        </div>
+        {view === 'monitors' && !selectedGroup ? (
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <div className="flex justify-between items-end mb-8">
+              <div>
+                <h2 className="text-2xl font-bold text-slate-900 border-l-4 border-purple-500 pl-4">Monitor Groups</h2>
+                <p className="text-slate-500 mt-1 pl-5">Displaying {groups.length} active monitor groups</p>
+              </div>
+              <button className="px-4 py-2 bg-white border border-slate-200 text-slate-600 font-bold rounded-xl shadow-sm hover:bg-slate-50 transition-colors text-sm flex items-center gap-2">
+                <RefreshCw className="w-4 h-4" /> Sync Groups
+              </button>
+            </div>
 
-        {/* Members Table */}
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-          <div className="px-6 py-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-            <h3 className="text-lg font-bold text-slate-800">Member Progress</h3>
-            <div className="relative">
-              <Search className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
-              <input type="text" placeholder="Search members..." className="pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 outline-none w-64" />
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {groups.map((group, idx) => (
+                <div key={idx} onClick={() => setSelectedGroup(group)} className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group cursor-pointer relative ring-2 ring-transparent hover:ring-purple-500/20">
+                  {/* Card Header */}
+                  <div className="bg-gradient-to-r from-slate-50 to-white px-6 py-4 border-b border-slate-100 flex justify-between items-center">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-md bg-gradient-to-br ${idx % 4 === 0 ? 'from-emerald-400 to-teal-500' :
+                        idx % 4 === 1 ? 'from-blue-400 to-indigo-500' :
+                          idx % 4 === 2 ? 'from-purple-400 to-fuchsia-500' :
+                            'from-orange-400 to-amber-500'
+                        }`}>
+                        M{idx + 1}
+                      </div>
+                      <h3 className="font-bold text-slate-800 text-sm line-clamp-1" title={group.monitor}>
+                        {group.monitor.split('–')[0].split('-')[0]}
+                      </h3>
+                    </div>
+                    <span className="px-2 py-1 bg-slate-100 text-slate-500 text-xs font-bold rounded-md border border-slate-200">{group.members.length}</span>
+                  </div>
+
+                  {/* List */}
+                  <div className="p-4 h-64 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-200">
+                    {group.members.length > 0 ? (
+                      <ul className="space-y-2">
+                        {group.members.map((m, i) => (
+                          <li key={i} className="flex items-center gap-3 text-sm text-slate-600 p-2 hover:bg-slate-50 rounded-lg transition-colors cursor-default">
+                            <div className="w-1.5 h-1.5 rounded-full bg-slate-300"></div>
+                            <span className="truncate">{m}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <div className="h-full flex flex-col items-center justify-center text-slate-400">
+                        <Users className="w-8 h-8 mb-2 opacity-20" />
+                        <p className="text-xs">No members assigned</p>
+                      </div>
+                    )}
+                  </div>
+                  <div className="px-4 py-3 bg-slate-50/50 border-t border-slate-100 text-center">
+                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest truncate px-2">{group.monitor}</p>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
+        ) : (
+          <>
+            {/* If we are in Monitor View AND have a Selected Group -> Show Header for Group */}
+            {view === 'monitors' && selectedGroup && (
+              <div className="flex items-center gap-4 mb-6 animate-in slide-in-from-left-4">
+                <button onClick={() => setSelectedGroup(null)} className="p-2 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors">
+                  <ChevronRight className="w-5 h-5 rotate-180 text-slate-500" />
+                </button>
+                <div>
+                  <h2 className="text-2xl font-bold text-slate-900">{selectedGroup.monitor}</h2>
+                  <p className="text-slate-500 text-sm">Viewing {selectedGroup.members.length} members</p>
+                </div>
+              </div>
+            )}
 
-          {loading ? (
-            <div className="p-12 text-center text-slate-400">Loading members...</div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm">
-                <thead className="bg-slate-50 border-b border-slate-100 text-slate-500 font-semibold">
-                  <tr>
-                    <th className="px-6 py-4">Name</th>
-                    <th className="px-6 py-4">Intern ID</th>
-                    <th className="px-6 py-4">Progress (Days)</th>
-                    <th className="px-6 py-4">Status</th>
-                    <th className="px-6 py-4">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-50">
-                  {members.map((member, idx) => (
-                    <tr key={idx} className="hover:bg-slate-50/80 transition-colors">
-                      <td className="px-6 py-4 font-medium text-slate-900 flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 font-bold text-xs border border-slate-200">{member.name.charAt(0)}</div>
-                        {member.name}
-                      </td>
-                      <td className="px-6 py-4 text-slate-500 font-mono text-xs">{member.internId}</td>
-                      <td className="px-6 py-4">
-                        <div className="w-full max-w-[140px] h-2 bg-slate-100 rounded-full overflow-hidden mb-1">
-                          <div className={`h-full rounded-full ${member.daysCompleted >= 90 ? 'bg-emerald-500' : 'bg-blue-500'}`} style={{ width: `${(member.daysCompleted / 90) * 100}%` }}></div>
+            {/* Stats Row */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">{selectedGroup ? 'Group Members' : 'Total Members'}</p>
+                <h3 className="text-3xl font-extrabold text-slate-900">{selectedGroup ? selectedGroup.members.length : members.length}</h3>
+              </div>
+              <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Certificate Eligible</p>
+                <h3 className="text-3xl font-extrabold text-slate-900">{selectedGroup ? selectedGroup.members.filter(gm => {
+                  const m = findUserForGroupMember(gm);
+                  return m && m.daysCompleted >= 90;
+                }).length : members.filter(m => m.daysCompleted >= 90).length}</h3>
+              </div>
+              <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Active Today</p>
+                <h3 className="text-3xl font-extrabold text-slate-900">
+                  {selectedGroup
+                    ? selectedGroup.members.filter(gm => {
+                      const m = findUserForGroupMember(gm);
+                      return m && m.history.some(h => new Date(h.date).toDateString() === new Date().toDateString());
+                    }).length
+                    : members.filter(m => m.history.some(h => new Date(h.date).toDateString() === new Date().toDateString())).length}
+                </h3>
+              </div>
+            </div>
+
+            {/* Members Table */}
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+              <div className="px-6 py-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                <h3 className="text-lg font-bold text-slate-800">Member Progress</h3>
+                <div className="relative">
+                  <Search className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search members..."
+                    className="pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 outline-none w-64 transition-all"
+                  />
+                </div>
+              </div>
+
+              {loading ? (
+                <div className="p-12 text-center text-slate-400">Loading members...</div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-sm">
+                    <thead className="bg-slate-50/80 border-b border-slate-100/80 sticky top-0 backdrop-blur-sm">
+                      <tr>
+                        <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Name</th>
+                        <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Intern ID</th>
+                        <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Progress</th>
+                        <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Status</th>
+                        <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-50">
+                      {(selectedGroup ? selectedGroup.members : filteredMembers).length === 0 ? (
+                        <tr>
+                          <td colSpan="5" className="px-6 py-12 text-center text-slate-400">
+                            No members found.
+                          </td>
+                        </tr>
+                      ) : (
+                        (selectedGroup ? selectedGroup.members : filteredMembers).map((item, idx) => {
+                          // LOGIC: If in Drill-down, 'item' is a String (Group Name). If Overview, 'item' is a User Object.
+                          let displayMember = null;
+                          let displayName = "";
+                          let isGroupRow = !!selectedGroup;
+
+                          if (isGroupRow) {
+                            displayName = item; // Show the full Group Sheet string
+                            displayMember = findUserForGroupMember(item); // Link to data
+                          } else {
+                            displayMember = item;
+                            displayName = item.name;
+                          }
+
+                          // If searching in drill-down, filter here
+                          if (selectedGroup && searchQuery && !displayName.toLowerCase().includes(searchQuery.toLowerCase())) {
+                            return null;
+                          }
+
+                          // If we have a user object (displayMember), show their data. Otherwise show placeholder.
+                          const hasData = !!displayMember;
+                          const m = displayMember || {};
+
+                          return (
+                            <tr key={idx} className="group hover:bg-white hover:shadow-lg hover:shadow-slate-200/50 transition-all duration-300 border-b border-slate-50 last:border-0">
+                              <td className="px-6 py-4 font-medium text-slate-900 flex items-center gap-4">
+                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-sm shadow-md bg-gradient-to-br ${idx % 3 === 0 ? 'from-purple-500 to-indigo-500' :
+                                  idx % 3 === 1 ? 'from-pink-500 to-rose-500' :
+                                    'from-amber-500 to-orange-500'
+                                  }`}>
+                                  {(displayName || "?").charAt(0)}
+                                </div>
+                                <div>
+                                  <p className="font-bold text-slate-800" title={displayName}>{displayName}</p>
+                                  <p className="text-[10px] text-slate-400 font-medium uppercase tracking-wide">
+                                    {isGroupRow ? 'Group Member' : 'Intern'}
+                                  </p>
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 font-bold text-slate-700 font-mono text-xs">
+                                {hasData ? m.internId : <span className="text-slate-300">-</span>}
+                              </td>
+                              <td className="px-6 py-4">
+                                {hasData ? (
+                                  <>
+                                    <div className="w-full max-w-[140px] h-2.5 bg-slate-100 rounded-full overflow-hidden mb-1.5 inset-shadow">
+                                      <div className={`h-full rounded-full ${m.daysCompleted >= 90 ? 'bg-gradient-to-r from-emerald-500 to-green-400' : 'bg-gradient-to-r from-blue-500 to-indigo-500'}`} style={{ width: `${(m.daysCompleted / 90) * 100}%` }}></div>
+                                    </div>
+                                    <span className="text-xs font-bold text-slate-500">{m.daysCompleted} <span className="text-slate-300">/</span> 90 Days</span>
+                                  </>
+                                ) : (
+                                  <span className="text-xs text-slate-400 italic">No Activity Data</span>
+                                )}
+                              </td>
+                              <td className="px-6 py-4">
+                                {hasData ? (
+                                  m.daysCompleted >= 90 ? (
+                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700 border border-emerald-200">
+                                      <CheckCircle2 className="w-3 h-3" /> Eligible
+                                    </span>
+                                  ) : (
+                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-blue-50 text-blue-600 border border-blue-100">
+                                      <Clock className="w-3 h-3" /> In Progress
+                                    </span>
+                                  )
+                                ) : (
+                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-400 border border-slate-200">
+                                    Unknown
+                                  </span>
+                                )}
+                              </td>
+                              <td className="px-6 py-4">
+                                {hasData && (
+                                  <div className="flex items-center gap-2">
+                                    <button onClick={() => handleViewLogs(m)} className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-50 text-slate-600 text-xs font-bold hover:bg-purple-50 hover:text-purple-600 transition-colors border border-slate-200 hover:border-purple-200">
+                                      <FileText className="w-3.5 h-3.5" /> View Logs
+                                    </button>
+                                  </div>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </>
+        )}
+        {/* STUDENT LOGS MODAL */}
+        {selectedMember && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="bg-white w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh] animate-in zoom-in-95 duration-200">
+              {/* Header */}
+              <div className="px-6 py-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-md bg-gradient-to-br from-purple-500 to-indigo-500">
+                    {selectedMember.name.charAt(0)}
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-slate-900">{selectedMember.name}</h3>
+                    <p className="text-xs text-slate-500 font-bold uppercase tracking-wider">Intern ID: {selectedMember.internId}</p>
+                  </div>
+                </div>
+                <button onClick={() => setSelectedMember(null)} className="p-2 hover:bg-slate-100 rounded-full transition-colors">
+                  <X className="w-6 h-6 text-slate-400" />
+                </button>
+              </div>
+
+              {/* Content */}
+              <div className="p-0 overflow-y-auto flex-1 bg-slate-50/30">
+                {loadingHistory ? (
+                  <div className="p-12 text-center text-slate-400 flex flex-col items-center gap-3">
+                    <RefreshCw className="w-6 h-6 animate-spin" />
+                    <p className="text-sm font-medium">Loading history...</p>
+                  </div>
+                ) : memberHistory.length > 0 ? (
+                  <div className="divide-y divide-slate-100">
+                    {memberHistory.map((log, idx) => (
+                      <div key={idx} className="p-6 bg-white hover:bg-slate-50 transition-colors">
+                        <div className="flex justify-between items-start mb-2">
+                          <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wide border ${log.category === 'Learning' ? 'bg-blue-50 text-blue-600 border-blue-100' :
+                            log.category === 'Coding' ? 'bg-purple-50 text-purple-600 border-purple-100' :
+                              'bg-orange-50 text-orange-600 border-orange-100'
+                            }`}>
+                            {log.category}
+                          </span>
+                          <span className="text-xs font-medium text-slate-400">{formatDateForDisplay(log.date)}</span>
                         </div>
-                        <span className="text-xs text-slate-500 font-medium">{member.daysCompleted} / 90 Days</span>
-                      </td>
-                      <td className="px-6 py-4">
-                        {member.daysCompleted >= 90 ? (
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700 border border-emerald-200">
-                            <CheckCircle2 className="w-3 h-3" /> Eligible
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-blue-50 text-blue-600 border border-blue-100">
-                            <Clock className="w-3 h-3" /> In Progress
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4">
-                        <button className="text-xs font-bold text-purple-600 hover:text-purple-800 hover:underline mr-4">View Logs</button>
-                        <button className="text-xs font-bold text-slate-500 hover:text-slate-800 hover:underline">Files</button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                        <p className="text-slate-700 text-sm leading-relaxed mb-3">{log.summary}</p>
+                        <div className="flex gap-2">
+                          {log.proof && (
+                            <a href={log.proof} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-50 text-slate-600 text-xs font-bold hover:bg-slate-100 border border-slate-200 transition-colors">
+                              <Paperclip className="w-3 h-3" /> Proof Link
+                            </a>
+                          )}
+                          {log.file && (log.file.startsWith('http') || log.file.startsWith('data:')) && (
+                            <a href={log.file} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-sky-50 text-sky-600 text-xs font-bold hover:bg-sky-100 border border-sky-200 transition-colors">
+                              <FileText className="w-3 h-3" /> Attached File
+                            </a>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="p-12 text-center text-slate-400 flex flex-col items-center">
+                    <History className="w-10 h-10 mb-3 opacity-20" />
+                    <p>No activity logs found for this user.</p>
+                  </div>
+                )}
+              </div>
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </main>
     </div>
   );
 };
 
-function App() {
+const App = () => {
   const [user, setUser] = useState(null);
   const [dbUsers, setDbUsers] = useState([]);
   const [loadingUsers, setLoadingUsers] = useState(true);
 
+  // Auto-Logout on Idle (30 Minutes)
+  const handleLogout = () => {
+    setUser(null);
+    localStorage.removeItem('intern_user');
+  };
+
+  useIdleTimer(() => {
+    if (user) {
+      console.log("User idle for 30 mins. Logging out.");
+      handleLogout();
+    }
+  }, 30 * 60 * 1000); // 30 Minutes
+
   // Fetch users from Google Sheet on load
   useEffect(() => {
-    // 1. Check LocalStorage for session
-    const savedUser = localStorage.getItem('intern_user');
-    if (savedUser) {
-      const u = JSON.parse(savedUser);
-      setUser(u);
-      // Fetch profile to sync photo
-      api.getProfile(u.name)
-        .then(p => {
-          if (p && p.photo) setUser(prev => ({ ...prev, photo: p.photo, bio: p.bio }));
-        })
-        .catch(err => console.log('Profile fetch failed silently:', err));
+    // 1. Check LocalStorage for session WITH SAFETY CHECK
+    try {
+      const savedUser = localStorage.getItem('intern_user');
+      if (savedUser) {
+        const u = JSON.parse(savedUser);
+
+        // Session Expiry Check (24 Hours)
+        const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+        const now = new Date().getTime();
+        const loginTime = u.loginTimestamp || 0;
+
+        if (now - loginTime > ONE_DAY_MS) {
+          console.log("Session expired. Logging out.");
+          localStorage.removeItem('intern_user');
+          return; // Stop here, user stays null
+        }
+
+        setUser(u);
+        // Fetch profile to sync photo
+        api.getProfile(u.name)
+          .then(p => {
+            if (p && p.photo) setUser(prev => ({ ...prev, photo: p.photo, bio: p.bio }));
+          })
+          .catch(err => console.log('Profile fetch failed silently:', err));
+      }
+    } catch (e) {
+      console.error("Session corrupted. Clearing storage.", e);
+      localStorage.removeItem('intern_user');
     }
 
     // 2. Fetch fresh data
@@ -1176,37 +1760,48 @@ function App() {
   const handleLogin = (userData) => {
     // Fetch profile on login
     api.getProfile(userData.name).then(p => {
-      const fullUser = { ...userData, ...p };
+      const fullUser = {
+        ...userData,
+        ...p,
+        loginTimestamp: new Date().getTime() // Store Login Time
+      };
       setUser(fullUser);
       localStorage.setItem('intern_user', JSON.stringify(fullUser));
     });
   };
 
-  const updateProfile = (newData) => {
+  const updateProfile = (newData, saveToStorage = true) => {
     setUser(prev => {
       const updated = { ...prev, ...newData };
-      localStorage.setItem('intern_user', JSON.stringify(updated));
+      // Preserve timestamp if it exists, else add it
+      if (!updated.loginTimestamp) updated.loginTimestamp = prev.loginTimestamp || new Date().getTime();
+
+      if (saveToStorage) {
+        try {
+          localStorage.setItem('intern_user', JSON.stringify(updated));
+        } catch (e) {
+          console.error("LocalStorage Update Failed:", e);
+        }
+      }
       return updated;
     });
   };
 
-  const handleLogout = () => {
-    setUser(null);
-    localStorage.removeItem('intern_user');
-  };
-
-  if (user) {
-    if (user.role === 'admin') {
-      return <AdminDashboard user={user} onLogout={handleLogout} />;
-    }
-    return <Dashboard user={user} onLogout={handleLogout} onUpdateProfile={updateProfile} />;
-  }
-
-  if (loadingUsers) {
-    return <div className="min-h-screen flex items-center justify-center font-bold text-slate-500">Loading Intern Portal...</div>;
-  }
-
-  return <LoginScreen onLogin={handleLogin} users={dbUsers} />;
-}
+  return (
+    <GlobalErrorBoundary>
+      {user ? (
+        user.role === 'admin' ? (
+          <AdminDashboard user={user} onLogout={handleLogout} />
+        ) : (
+          <Dashboard user={user} onLogout={handleLogout} onUpdateProfile={updateProfile} />
+        )
+      ) : loadingUsers ? (
+        <div className="min-h-screen flex items-center justify-center font-bold text-slate-500">Loading Intern Portal...</div>
+      ) : (
+        <LoginScreen onLogin={handleLogin} users={dbUsers} />
+      )}
+    </GlobalErrorBoundary>
+  );
+};
 
 export default App;

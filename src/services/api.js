@@ -8,7 +8,7 @@ export const api = {
      */
     fetchUsers: async () => {
         try {
-            const response = await fetch(`${API_URL}?action=getUsers`);
+            const response = await fetch(`${API_URL}?action=getUsers&_t=${Date.now()}`);
             if (!response.ok) throw new Error("Network response was not ok");
             return await response.json();
         } catch (error) {
@@ -70,6 +70,20 @@ export const api = {
         } catch (error) {
             console.error("Error saving profile:", error);
             return { success: false };
+        }
+    },
+
+    /**
+     * Fetches monitor groups from the Sheet.
+     */
+    fetchGroups: async () => {
+        try {
+            const response = await fetch(`${API_URL}?action=getGroups`);
+            if (!response.ok) throw new Error("Network response was not ok");
+            return await response.json();
+        } catch (error) {
+            console.error("Error fetching groups:", error);
+            return [];
         }
     }
 };
