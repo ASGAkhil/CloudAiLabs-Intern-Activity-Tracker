@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Upload, CheckCircle2, Clock, LogOut, LayoutDashboard, History, FileText, ChevronRight, User, Briefcase, BarChart3, Search, Instagram, Linkedin, Paperclip, AlertTriangle, X, Camera, Lock, RefreshCw, Info, HelpCircle, Users, Eye, EyeOff } from 'lucide-react';
+import { Upload, CheckCircle2, Clock, LogOut, LayoutDashboard, History, FileText, ChevronRight, User, Briefcase, BarChart3, Search, Instagram, Linkedin, Paperclip, AlertTriangle, X, Camera, Lock, RefreshCw, Info, HelpCircle, Users, Eye, EyeOff, Moon, Sun, BookOpen, GraduationCap, ExternalLink, ArrowLeft } from 'lucide-react';
 import logo from './assets/logo.png';
 
 import { api } from './services/api';
@@ -98,8 +98,8 @@ export async function fetchAllMembers() {
   // Add placeholder data for Admin UI compatibility
   return users.filter(u => u.role === 'user').map(u => ({
     ...u,
-    daysCompleted: 0,
-    history: []
+    daysCompleted: u.daysCompleted || 0, // Use API value
+    history: [] // History loaded on demand
   }));
 }
 
@@ -218,7 +218,7 @@ class GlobalErrorBoundary extends React.Component {
   }
 }
 
-const LoginScreen = ({ onLogin, users }) => {
+const LoginScreen = ({ onLogin, users, toggleTheme, theme }) => {
   const [name, setName] = useState('');
   const [internId, setInternId] = useState('');
   const [loading, setLoading] = useState(false);
@@ -255,21 +255,34 @@ const LoginScreen = ({ onLogin, users }) => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col justify-center items-center p-4 selection:bg-sky-100 selection:text-sky-900 overflow-hidden relative">
+    <div className="min-h-screen flex flex-col justify-center items-center p-4 selection:bg-sky-100 selection:text-sky-900 overflow-hidden relative dark:bg-slate-900 transition-colors duration-300">
       {/* Background Decor - mimicking the website vibe */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-[20%] -left-[10%] w-[50%] h-[50%] bg-sky-400/20 rounded-full blur-[100px] animate-blob"></div>
-        <div className="absolute top-[30%] -right-[10%] w-[40%] h-[40%] bg-blue-500/10 rounded-full blur-[100px] animate-blob animation-delay-2000"></div>
+        <div className="absolute -top-[20%] -left-[10%] w-[50%] h-[50%] bg-sky-400/20 rounded-full blur-[100px] animate-blob dark:opacity-10"></div>
+        <div className="absolute top-[30%] -right-[10%] w-[40%] h-[40%] bg-blue-500/10 rounded-full blur-[100px] animate-blob animation-delay-2000 dark:opacity-10"></div>
       </div>
 
-      <div className="w-full max-w-md bg-white/80 backdrop-blur-xl rounded-3xl shadow-brand-glow border border-white/50 overflow-hidden transform transition-all hover:scale-[1.01] duration-500 relative z-10">
+      {/* Theme Toggle */}
+      <div className="fixed top-6 right-6 z-[9999]">
+        <button
+          onClick={() => {
+            console.log("Toggle theme clicked");
+            toggleTheme();
+          }}
+          className="p-3 bg-white/80 dark:bg-slate-800 backdrop-blur-xl rounded-full shadow-lg border border-white/50 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:scale-105 active:scale-95 transition-all cursor-pointer"
+        >
+          {theme === 'dark' ? <Sun className="w-5 h-5 text-amber-400" /> : <Moon className="w-5 h-5 text-sky-600" />}
+        </button>
+      </div>
+
+      <div className="w-full max-w-md bg-white/80 dark:bg-slate-800/80 backdrop-blur-xl rounded-3xl shadow-brand-glow border border-white/50 dark:border-slate-700 overflow-hidden transform transition-all hover:scale-[1.01] duration-500 relative z-10">
         <div className="p-10 text-center">
           <div className="relative z-10 animate-fly-in">
-            <div className="w-40 h-40 bg-white rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-xl shadow-sky-100 ring-1 ring-slate-100 p-6 animate-float">
+            <div className="w-40 h-40 bg-white dark:bg-slate-700 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-xl shadow-sky-100 dark:shadow-none ring-1 ring-slate-100 dark:ring-slate-600 p-6 animate-float">
               <img src={logo} alt="CloudAiLabs Logo" className="w-full h-full object-contain drop-shadow-lg" />
             </div>
-            <h2 className="text-3xl font-bold text-slate-900 tracking-tight">CloudAiLabs</h2>
-            <p className="text-slate-500 mt-2 font-medium tracking-wide text-sm uppercase">Activity Tracker</p>
+            <h2 className="text-3xl font-bold text-slate-900 dark:text-white tracking-tight">CloudAiLabs</h2>
+            <p className="text-slate-500 dark:text-slate-400 mt-2 font-medium tracking-wide text-sm uppercase">Activity Tracker</p>
           </div>
         </div>
 
@@ -294,7 +307,7 @@ const LoginScreen = ({ onLogin, users }) => {
                   onFocus={() => setShowSuggestions(true)}
                   onBlur={() => setTimeout(() => setShowSuggestions(false), 200)} // Delay to allow click
                   placeholder="Type your name..."
-                  className="w-full pl-4 pr-10 py-4 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none transition-all text-slate-700 font-medium group-hover:bg-white group-hover:shadow-sm"
+                  className="w-full pl-4 pr-10 py-4 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none transition-all text-slate-700 dark:text-slate-200 font-medium group-hover:bg-white dark:group-hover:bg-slate-800 group-hover:shadow-sm"
                 />
                 <div className="absolute right-4 top-4 pointer-events-none text-slate-400">
                   <Search className="w-5 h-5" />
@@ -303,11 +316,11 @@ const LoginScreen = ({ onLogin, users }) => {
 
               {/* Suggestions Dropdown */}
               {showSuggestions && name && filteredUsers.length > 0 && (
-                <div className="absolute z-50 w-full mt-1 bg-white border border-slate-100 rounded-xl shadow-xl max-h-48 overflow-y-auto">
+                <div className="absolute z-50 w-full mt-1 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-xl shadow-xl max-h-48 overflow-y-auto">
                   {filteredUsers.map((u, idx) => (
                     <div
                       key={idx}
-                      className="px-4 py-3 hover:bg-sky-50 cursor-pointer text-slate-700 font-medium transition-colors"
+                      className="px-4 py-3 hover:bg-sky-50 dark:hover:bg-slate-700 cursor-pointer text-slate-700 dark:text-slate-200 font-medium transition-colors"
                       onClick={() => { setName(u.name); setShowSuggestions(false); }}
                     >
                       {u.name}
@@ -325,7 +338,7 @@ const LoginScreen = ({ onLogin, users }) => {
                   value={internId}
                   onChange={(e) => setInternId(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full px-4 py-4 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none transition-all placeholder:text-slate-300 font-medium group-hover:bg-white group-hover:shadow-sm pr-12"
+                  className="w-full px-4 py-4 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none transition-all placeholder:text-slate-300 dark:placeholder:text-slate-600 font-medium group-hover:bg-white dark:group-hover:bg-slate-800 group-hover:shadow-sm pr-12 dark:text-white"
                 />
                 <button
                   type="button"
@@ -369,13 +382,133 @@ const LoginScreen = ({ onLogin, users }) => {
   );
 };
 
-const Dashboard = ({ user, onLogout, onUpdateProfile }) => {
+// --- NEW COMPONENT: COURSE TRACKER ---
+const CourseCard = ({ title, link, status, onToggle }) => {
+  // Status: 'not_started' | 'pursuing' | 'done'
+  const isPursuing = status === 'pursuing';
+  const isDone = status === 'done';
+
+  return (
+    <div className="bg-white dark:bg-slate-800 rounded-2xl p-5 shadow-sm border border-slate-200 dark:border-slate-700 hover:shadow-lg transition-all flex flex-col justify-between h-full group">
+      <div>
+        <div className="flex justify-between items-start mb-3">
+          <div className="p-2.5 rounded-xl bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 group-hover:bg-indigo-100 transition-colors">
+            <BookOpen className="w-5 h-5" />
+          </div>
+          {isDone ? (
+            <span className="bg-emerald-100 text-emerald-700 text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wide border border-emerald-200 flex items-center gap-1">
+              <CheckCircle2 className="w-3 h-3" /> Done
+            </span>
+          ) : isPursuing ? (
+            <span className="bg-amber-100 text-amber-700 text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wide border border-amber-200 flex items-center gap-1">
+              <Clock className="w-3 h-3" /> Pursuing
+            </span>
+          ) : (
+            <span className="bg-slate-100 text-slate-500 text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wide border border-slate-200">
+              To Do
+            </span>
+          )}
+        </div>
+        <h4 className="font-bold text-slate-900 dark:text-white mb-1 line-clamp-2">{title}</h4>
+        <a href={link} target="_blank" rel="noreferrer" className="text-xs text-sky-600 hover:underline flex items-center gap-1 mb-4">
+          View Course <ExternalLink className="w-3 h-3" />
+        </a>
+      </div>
+
+      <div className="grid grid-cols-2 gap-2 mt-auto">
+        <button
+          onClick={() => onToggle('pursuing')}
+          disabled={isDone} // Can't go back to pursuing if done? User might want to. Let's allow switching.
+          className={`py-2 rounded-lg text-xs font-bold transition-all border ${isPursuing
+            ? 'bg-amber-50 text-amber-700 border-amber-200 ring-2 ring-amber-100'
+            : 'bg-white text-slate-600 border-slate-200 hover:bg-amber-50 hover:text-amber-600'
+            }`}
+        >
+          Pursuing
+        </button>
+        <button
+          onClick={() => onToggle('done')}
+          className={`py-2 rounded-lg text-xs font-bold transition-all border ${isDone
+            ? 'bg-emerald-50 text-emerald-700 border-emerald-200 ring-2 ring-emerald-100'
+            : 'bg-white text-slate-600 border-slate-200 hover:bg-emerald-50 hover:text-emerald-600'
+            }`}
+        >
+          Done
+        </button>
+      </div>
+    </div>
+  );
+};
+
+const CourseTracker = ({ user, progress, onUpdateStatus, onViewCourses }) => {
+  // Removed internal state. Uses Props.
+  const [loading, setLoading] = useState(true);
+
+  const COURSES = [
+    { id: 'basics1', title: 'Computer Basics (GCF Global)', link: 'https://edu.gcfglobal.org/en/computerbasics/' },
+    { id: 'basics2', title: 'IBM Skills Planning', link: 'https://skills.yourlearning.ibm.com/activity/PLAN-3E2A749669E2' },
+    { id: 'aws', title: 'AWS Cloud Practitioner Essentials', link: 'https://skillbuilder.aws/learn/94T2BEN85A/aws-cloud-practitioner-essentials/8D79F3AVR7' },
+    { id: 'ai', title: 'Microsoft AI For Beginners', link: 'https://github.com/microsoft/AI-For-Beginners' }
+  ];
+
+  const handleToggle = (courseId, statusType) => {
+    // Toggle Logic: If clicking same status, clear it (reset to 'not_started'). If different, set it.
+    const current = progress[courseId];
+    const newStatus = current === statusType ? 'not_started' : statusType;
+    onUpdateStatus(courseId, newStatus);
+  };
+
+  const doneCount = COURSES.filter(c => progress[c.id] === 'done').length;
+  const total = COURSES.length;
+
+  return (
+    <div className="mb-8 animate-in fade-in slide-in-from-bottom-5 duration-700">
+      <div className="flex justify-between items-end mb-4">
+        <div>
+          <h2 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
+            <GraduationCap className="w-6 h-6 text-indigo-600" /> Recommended Courses
+          </h2>
+          <p className="text-sm font-medium text-slate-500 dark:text-slate-400"> curated for Monitor Group Interns</p>
+          <button
+            onClick={onViewCourses}
+            className="mt-2 text-xs font-bold text-sky-600 hover:text-sky-700 flex items-center gap-1 hover:underline"
+          >
+            Explore Full Path <ChevronRight className="w-3 h-3" />
+          </button>
+        </div>
+        <div className="text-right">
+          <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Progress</span>
+          <div className="flex items-center gap-2">
+            <div className="w-32 h-2.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+              <div className="h-full bg-indigo-500 rounded-full transition-all duration-1000 ease-out" style={{ width: `${(doneCount / total) * 100}%` }}></div>
+            </div>
+            <span className="text-sm font-bold text-indigo-600 dark:text-indigo-400">{doneCount}/{total}</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+        {COURSES.map(course => (
+          <CourseCard
+            key={course.id}
+            {...course}
+            status={progress[course.id] || 'not_started'}
+            onToggle={(status) => handleToggle(course.id, status)}
+          />
+        ))}
+      </div>
+    </div>
+  );
+};
+
+const Dashboard = ({ user, onLogout, onUpdateProfile, toggleTheme, theme, courseProgress, onUpdateCourseProgress }) => {
   const [history, setHistory] = useState([]);
   const [view, setView] = useState('dashboard'); // 'dashboard' | 'profile'
 
   /* --- NEW: Loading & Refresh State --- */
   const [initialLoading, setInitialLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isPhotoUploading, setIsPhotoUploading] = useState(false); // NEW: Lifted state to show in Navbar
 
   // Calculate progress based on history
   const daysCompleted = history.length;
@@ -476,35 +609,46 @@ const Dashboard = ({ user, onLogout, onUpdateProfile }) => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 font-sans text-slate-900 pb-12 selection:bg-indigo-100 selection:text-indigo-900 flex flex-col">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 font-sans text-slate-900 dark:text-slate-100 pb-12 selection:bg-indigo-100 selection:text-indigo-900 flex flex-col transition-colors duration-300">
       {/* Navbar */}
-      <nav className="bg-white/80 border-b border-slate-200 sticky top-0 z-30 backdrop-blur-xl supports-[backdrop-filter]:bg-white/60">
+      <nav className="bg-white/80 dark:bg-slate-900/80 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-30 backdrop-blur-xl supports-[backdrop-filter]:bg-white/60 dark:supports-[backdrop-filter]:bg-slate-900/60">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-18 py-3">
             <div className="flex items-center gap-3">
               <img src={logo} alt="Logo" className="w-9 h-9 object-contain drop-shadow-sm" />
               <div>
-                <h1 className="text-xl font-bold text-slate-900 leading-none tracking-tight">CloudAiLabs</h1>
+                <h1 className="text-xl font-bold text-slate-900 dark:text-white leading-none tracking-tight">CloudAiLabs</h1>
                 <p className="text-xs text-sky-500 font-semibold mt-0.5 tracking-wide uppercase">Activity Tracker</p>
               </div>
             </div>
 
             {/* Dynamic Greeting (Tablet/Desktop) */}
             <div className="hidden md:block text-center absolute left-1/2 -translate-x-1/2">
-              <h2 className="text-sm font-bold text-slate-800">{user?.name ? getTimeBasedGreeting(user.name.split(' ')[0]) : 'Welcome'}</h2>
+              <h2 className="text-sm font-bold text-slate-800 dark:text-slate-200">{user?.name ? getTimeBasedGreeting(user.name.split(' ')[0]) : 'Welcome'}</h2>
               <p className="text-[10px] text-slate-400 font-medium uppercase tracking-widest">{greetingSubtitle}</p>
             </div>
 
             <div className="flex items-center gap-4">
               <button
+                onClick={toggleTheme}
+                className="p-2 text-slate-400 hover:text-sky-600 dark:hover:text-amber-400 transition-colors"
+              >
+                {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+              </button>
+
+              <button
                 onClick={() => setView('profile')}
-                className="flex items-center gap-3 px-3 md:px-4 py-2 bg-slate-50 rounded-full border border-slate-200/60 shadow-sm hover:shadow-md transition-shadow group cursor-pointer"
+                className="flex items-center gap-3 px-3 md:px-4 py-2 bg-slate-50 dark:bg-slate-800 rounded-full border border-slate-200/60 dark:border-slate-700 shadow-sm hover:shadow-md transition-shadow group cursor-pointer"
               >
                 <div className="w-8 h-8 bg-sky-100 rounded-full flex items-center justify-center text-sky-700 font-bold text-xs ring-2 ring-white overflow-hidden shrink-0">
                   {/* Sync Photo Logic: Prioritize User Prop (State), then LocalStorage */}
-                  {user.photo || localStorage.getItem(`photo_${user.name}`) ? (
+                  {isPhotoUploading ? (
+                    <div className="animate-spin text-sky-600"><RefreshCw className="w-4 h-4" /></div>
+                  ) : user.photo || localStorage.getItem(`photo_${user.name}`) ? (
                     <img src={user.photo || localStorage.getItem(`photo_${user.name}`)} alt={user.name} className="w-full h-full object-cover" />
-                  ) : user.name.charAt(0)}
+                  ) : (
+                    user.name.charAt(0)
+                  )}
                 </div>
                 <span className="text-sm font-semibold text-slate-700 pr-1 group-hover:text-sky-600 transition-colors hidden sm:inline-block">{user.name}</span>
               </button>
@@ -528,7 +672,21 @@ const Dashboard = ({ user, onLogout, onUpdateProfile }) => {
 
         {view === 'profile' ? (
           <SectionErrorBoundary onReset={() => setView('dashboard')}>
-            <ProfileSection user={user} onBack={() => setView('dashboard')} onUpdate={user.role !== 'admin' ? onUpdateProfile : null} />
+            <ProfileSection
+              user={user}
+              onBack={() => setView('dashboard')}
+              onUpdate={user.role !== 'admin' ? onUpdateProfile : null}
+              onUploadStatusChange={setIsPhotoUploading} // NEW Prop
+            />
+          </SectionErrorBoundary>
+        ) : view === 'courses' ? (
+          <SectionErrorBoundary onReset={() => setView('dashboard')}>
+            <CoursesSection
+              user={user}
+              statuses={courseProgress}
+              onUpdateStatus={onUpdateCourseProgress}
+              onBack={() => setView('dashboard')}
+            />
           </SectionErrorBoundary>
         ) : (
           <>
@@ -551,15 +709,15 @@ const Dashboard = ({ user, onLogout, onUpdateProfile }) => {
 
               {/* Main Greeting Block */}
               <div className="mb-8">
-                <h1 className="text-3xl font-bold text-slate-900 bg-clip-text text-transparent bg-gradient-to-r from-slate-900 to-slate-700 mb-2">
+                <h1 className="text-3xl font-bold text-slate-900 dark:text-white bg-clip-text text-transparent bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-300 mb-2">
                   {getTimeBasedGreeting(user.name)}
                 </h1>
-                <p className="text-slate-500 font-medium text-lg">{greetingSubtitle}</p>
+                <p className="text-slate-500 dark:text-slate-400 font-medium text-lg">{greetingSubtitle}</p>
               </div>
 
               <div className="flex justify-between items-end mb-6">
-                <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Overview</h2>
-                <p className="text-sm font-medium text-slate-500">Last updated: Just now</p>
+                <h2 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">Overview</h2>
+                <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Last updated: Just now</p>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -578,6 +736,8 @@ const Dashboard = ({ user, onLogout, onUpdateProfile }) => {
                   sub="Total Active Days"
                   icon={<FileText className="w-6 h-6 text-emerald-600" />}
                   color="emerald"
+                  variant="circle"
+                  progress={Math.min((daysCompleted / 90) * 100, 100)}
                 />
                 {daysCompleted >= 90 ? (
                   <div className="bg-gradient-to-br from-amber-100 to-amber-50 p-6 rounded-3xl shadow-sm border border-amber-200 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group cursor-pointer relative overflow-hidden">
@@ -604,14 +764,26 @@ const Dashboard = ({ user, onLogout, onUpdateProfile }) => {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+            {/* --- NEW: COURSE TRACKER (ONLY FOR MONITOR MEMBERS) --- */}
+            {user.isMonitor && (
+              <div className="mt-8 border-t border-slate-200 dark:border-slate-800 pt-8">
+                <CourseTracker
+                  user={user}
+                  progress={courseProgress}
+                  onUpdateStatus={onUpdateCourseProgress}
+                  onViewCourses={() => setView('courses')}
+                />
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start mt-8">
 
               {/* Main Content Form - Wider */}
               <div className="lg:col-span-8 space-y-6 animate-in fade-in slide-in-from-bottom-6 duration-700 delay-100">
-                <div className="bg-white rounded-3xl shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden">
-                  <div className="px-8 py-6 border-b border-slate-100 bg-white flex justify-between items-center">
-                    <h3 className="text-lg font-bold text-slate-800 flex items-center gap-3">
-                      <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-sky-50 text-sky-600">
+                <div className="bg-white dark:bg-slate-800 rounded-3xl shadow-xl shadow-slate-200/50 dark:shadow-none border border-slate-100 dark:border-slate-700 overflow-hidden">
+                  <div className="px-8 py-6 border-b border-slate-100 dark:border-slate-700 bg-white dark:bg-slate-800 flex justify-between items-center">
+                    <h3 className="text-lg font-bold text-slate-800 dark:text-white flex items-center gap-3">
+                      <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-sky-50 dark:bg-sky-900/40 text-sky-600 dark:text-sky-400">
                         <FileText className="w-4 h-4" />
                       </span>
                       Submit Daily Log
@@ -623,7 +795,7 @@ const Dashboard = ({ user, onLogout, onUpdateProfile }) => {
                         <HelpCircle className="w-5 h-5" />
                       </button>
                     </h3>
-                    <span className="text-xs font-bold px-3 py-1.5 bg-slate-50 text-slate-600 rounded-lg border border-slate-200">
+                    <span className="text-xs font-bold px-3 py-1.5 bg-slate-50 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-lg border border-slate-200 dark:border-slate-600">
                       {new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
                     </span>
                   </div>
@@ -686,10 +858,10 @@ const Dashboard = ({ user, onLogout, onUpdateProfile }) => {
 
               {/* Sidebar / Recent History - Narrower */}
               <div className="lg:col-span-4 space-y-6 animate-in fade-in slide-in-from-bottom-8 duration-700 delay-200">
-                <div className="bg-white rounded-3xl shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden flex flex-col h-[650px]">
-                  <div className="px-6 py-5 border-b border-slate-100 bg-white flex justify-between items-center z-10">
-                    <h3 className="text-lg font-bold text-slate-800 flex items-center gap-3">
-                      <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-orange-50 text-orange-600">
+                <div className="bg-white dark:bg-slate-800 rounded-3xl shadow-xl shadow-slate-200/50 dark:shadow-none border border-slate-100 dark:border-slate-700 overflow-hidden flex flex-col h-[650px]">
+                  <div className="px-6 py-5 border-b border-slate-100 dark:border-slate-700 bg-white dark:bg-slate-800 flex justify-between items-center z-10">
+                    <h3 className="text-lg font-bold text-slate-800 dark:text-white flex items-center gap-3">
+                      <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-orange-50 dark:bg-orange-900/40 text-orange-600 dark:text-orange-400">
                         <History className="w-4 h-4" />
                       </span>
                       Recent Activity
@@ -697,7 +869,7 @@ const Dashboard = ({ user, onLogout, onUpdateProfile }) => {
                     <button
                       onClick={handleManualRefresh}
                       disabled={isRefreshing}
-                      className="text-xs font-bold text-sky-600 hover:text-sky-700 hover:bg-sky-50 px-3 py-1.5 rounded-lg transition-all flex items-center gap-2"
+                      className="text-xs font-bold text-sky-600 dark:text-sky-400 hover:text-sky-700 dark:hover:text-sky-300 hover:bg-sky-50 dark:hover:bg-sky-900/30 px-3 py-1.5 rounded-lg transition-all flex items-center gap-2"
                     >
                       <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
                       {isRefreshing ? 'Syncing...' : 'Sync History'}
@@ -769,7 +941,7 @@ const CircularProgress = ({ progress, size = 120, strokeWidth = 10, color = "tex
     <div className="relative flex items-center justify-center" style={{ width: size, height: size }}>
       <svg className="w-full h-full transform -rotate-90">
         <circle
-          className="text-slate-100"
+          className="text-slate-100 dark:text-slate-700"
           strokeWidth={strokeWidth}
           stroke="currentColor"
           fill="transparent"
@@ -798,35 +970,35 @@ const CircularProgress = ({ progress, size = 120, strokeWidth = 10, color = "tex
 };
 
 const StatCard = ({ label, value, sub, icon, progress, color, variant }) => (
-  <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group h-full flex flex-col justify-between">
+  <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-700 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group h-full flex flex-col justify-between">
     {variant === 'circle' ? (
       <div className="flex flex-col items-center justify-center text-center h-full gap-4">
         <div className="flex justify-between w-full mb-2">
-          <p className="text-sm font-bold text-slate-400 tracking-wider uppercase">{label}</p>
-          <div className={`p-2 rounded-xl bg-${color}-50 text-${color}-600`}>{icon}</div>
+          <p className="text-sm font-bold text-slate-400 dark:text-slate-500 tracking-wider uppercase">{label}</p>
+          <div className={`p-2 rounded-xl bg-${color}-50 dark:bg-${color}-900/30 text-${color}-600 dark:text-${color}-400`}>{icon}</div>
         </div>
-        <CircularProgress progress={progress} color={`text-${color}-600`} />
+        <CircularProgress progress={progress} color={`text-${color}-600 dark:text-${color}-400`} />
         <div>
-          <h3 className="text-xl font-bold text-slate-900">{value}</h3>
-          <p className={`text-xs font-bold text-${color}-600 bg-${color}-50 px-2 py-1.5 rounded-md mt-2 inline-block`}>{sub}</p>
+          <h3 className="text-xl font-bold text-slate-900 dark:text-white">{value}</h3>
+          <p className={`text-xs font-bold text-${color}-600 dark:text-${color}-300 bg-${color}-50 dark:bg-${color}-900/30 px-2 py-1.5 rounded-md mt-2 inline-block`}>{sub}</p>
         </div>
       </div>
     ) : (
       <>
         <div className="flex justify-between items-start mb-6">
           <div>
-            <p className="text-sm font-bold text-slate-400 tracking-wider uppercase mb-1">{label}</p>
-            <h3 className="text-3xl font-extrabold text-slate-900 tracking-tight">{value}</h3>
+            <p className="text-sm font-bold text-slate-400 dark:text-slate-500 tracking-wider uppercase mb-1">{label}</p>
+            <h3 className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">{value}</h3>
           </div>
-          <div className={`p-3 rounded-2xl bg-${color}-50 border border-${color}-100 group-hover:bg-${color}-100 transition-colors`}>{icon}</div>
+          <div className={`p-3 rounded-2xl bg-${color}-50 dark:bg-${color}-900/30 border border-${color}-100 dark:border-${color}-800 group-hover:bg-${color}-100 dark:group-hover:bg-${color}-900/50 transition-colors`}>{icon}</div>
         </div>
         <div className="flex items-center gap-3">
           {progress !== undefined && (
-            <div className="flex-1 h-2.5 bg-slate-100 rounded-full overflow-hidden inset-shadow">
-              <div className={`h-full bg-${color}-600 rounded-full`} style={{ width: `${progress}%` }}></div>
+            <div className="flex-1 h-2.5 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden inset-shadow">
+              <div className={`h-full bg-${color}-600 dark:bg-${color}-500 rounded-full`} style={{ width: `${progress}%` }}></div>
             </div>
           )}
-          <p className={`text-xs font-bold text-${color}-600 bg-${color}-50 px-2 py-1 rounded-md`}>{sub}</p>
+          <p className={`text-xs font-bold text-${color}-600 dark:text-${color}-300 bg-${color}-50 dark:bg-${color}-900/30 px-2 py-1 rounded-md`}>{sub}</p>
         </div>
       </>
     )}
@@ -875,12 +1047,12 @@ const DailyLogForm = ({ user, onSuccess }) => {
     <form onSubmit={handleSubmit} className="space-y-6">
       <div className="grid grid-cols-2 gap-5">
         <div className="col-span-2 sm:col-span-1">
-          <label className="block text-sm font-bold text-slate-700 mb-2">Category</label>
+          <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Category</label>
           <div className="relative group">
             <select
               value={formData.category}
               onChange={e => setFormData({ ...formData, category: e.target.value })}
-              className="w-full text-sm pl-4 pr-10 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all appearance-none font-medium group-hover:bg-slate-100"
+              className="w-full text-sm pl-4 pr-10 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all appearance-none font-medium group-hover:bg-slate-100 dark:group-hover:bg-slate-800 dark:text-white"
             >
               <option>Learning</option>
               <option>Coding</option>
@@ -891,14 +1063,14 @@ const DailyLogForm = ({ user, onSuccess }) => {
           </div>
         </div>
         <div className="col-span-2 sm:col-span-1">
-          <label className="block text-sm font-bold text-slate-700 mb-2">Proof Link <span className="text-slate-400 font-normal">(Optional)</span></label>
+          <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Proof Link <span className="text-slate-400 font-normal">(Optional)</span></label>
           <div className="relative group">
             <input
               type="text"
               value={formData.proof}
               onChange={e => setFormData({ ...formData, proof: e.target.value })}
               placeholder="https://github.com/..."
-              className="w-full text-sm px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all placeholder:text-slate-400 font-medium group-hover:bg-slate-100"
+              className="w-full text-sm px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all placeholder:text-slate-400 font-medium group-hover:bg-slate-100 dark:group-hover:bg-slate-800 dark:text-white"
             />
           </div>
         </div>
@@ -906,19 +1078,19 @@ const DailyLogForm = ({ user, onSuccess }) => {
 
       {/* File Upload Section */}
       <div>
-        <label className="block text-sm font-bold text-slate-700 mb-2">Upload Files</label>
-        <div className="border-2 border-dashed border-slate-200 rounded-xl p-6 text-center hover:bg-slate-50 hover:border-slate-300 transition-all cursor-pointer relative">
+        <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Upload Files</label>
+        <div className="border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-xl p-6 text-center hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:border-slate-300 transition-all cursor-pointer relative">
           <input type="file" onChange={handleFileChange} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
           <div className="flex flex-col items-center justify-center gap-2 pointer-events-none">
-            <div className="w-10 h-10 bg-indigo-50 text-indigo-500 rounded-full flex items-center justify-center mb-1">
+            <div className="w-10 h-10 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-500 dark:text-indigo-400 rounded-full flex items-center justify-center mb-1">
               <Upload className="w-5 h-5" />
             </div>
             {formData.file ? (
               <p className="text-sm font-bold text-emerald-600 flex items-center gap-1"><CheckCircle2 className="w-4 h-4" /> File Selected</p>
             ) : (
               <>
-                <p className="text-sm font-medium text-slate-900">Click to upload or drag and drop</p>
-                <p className="text-xs text-slate-500">SVG, PNG, JPG or PDF (max. 5MB)</p>
+                <p className="text-sm font-medium text-slate-900 dark:text-slate-300">Click to upload or drag and drop</p>
+                <p className="text-xs text-slate-500 dark:text-slate-500">SVG, PNG, JPG or PDF (max. 5MB)</p>
               </>
             )}
           </div>
@@ -926,14 +1098,14 @@ const DailyLogForm = ({ user, onSuccess }) => {
       </div>
 
       <div>
-        <label className="block text-sm font-bold text-slate-700 mb-2">Work Summary</label>
+        <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Work Summary</label>
         <div className="relative group">
           <textarea
             value={formData.summary}
             onChange={e => setFormData({ ...formData, summary: e.target.value })}
             placeholder="Describe what you accomplished today..."
             required
-            className="w-full text-sm p-4 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none min-h-[180px] resize-none transition-all placeholder:text-slate-400 leading-relaxed font-medium group-hover:bg-slate-100"
+            className="w-full text-sm p-4 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none min-h-[180px] resize-none transition-all placeholder:text-slate-400 leading-relaxed font-medium group-hover:bg-slate-100 dark:group-hover:bg-slate-800 dark:text-white"
           ></textarea>
         </div>
         <p className="text-right text-xs text-slate-400 mt-2 font-medium">Be specific and concise.</p>
@@ -943,14 +1115,14 @@ const DailyLogForm = ({ user, onSuccess }) => {
         <button
           type="submit"
           disabled={status === 'submitting'}
-          className="group w-full py-4 px-6 bg-slate-900 hover:bg-black text-white font-bold rounded-2xl transition-all shadow-xl shadow-slate-200 hover:shadow-2xl hover:-translate-y-0.5 disabled:opacity-75 disabled:shadow-none disabled:transform-none flex justify-center items-center gap-2"
+          className="group w-full py-4 px-6 bg-slate-900 dark:bg-white hover:bg-black dark:hover:bg-slate-200 text-white dark:text-slate-900 font-bold rounded-2xl transition-all shadow-xl shadow-slate-200 dark:shadow-none hover:shadow-2xl hover:-translate-y-0.5 disabled:opacity-75 disabled:shadow-none disabled:transform-none flex justify-center items-center gap-2"
         >
           {status === 'submitting' ? (
-            <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+            <span className="w-5 h-5 border-2 border-white/30 dark:border-slate-900/30 border-t-white dark:border-t-slate-900 rounded-full animate-spin"></span>
           ) : status === 'success' ? (
-            <><CheckCircle2 className="w-5 h-5 text-emerald-400" /> Log Saved!</>
+            <><CheckCircle2 className="w-5 h-5 text-emerald-400 dark:text-emerald-600" /> Log Saved!</>
           ) : (
-            <>Submit Daily Log <span className="bg-white/10 p-1 rounded-md group-hover:translate-x-1 transition-transform"><ChevronRight className="w-4 h-4" /></span></>
+            <>Submit Daily Log <span className="bg-white/10 dark:bg-slate-900/10 p-1 rounded-md group-hover:translate-x-1 transition-transform"><ChevronRight className="w-4 h-4" /></span></>
           )}
         </button>
       </div>
@@ -962,22 +1134,22 @@ const HistoryList = ({ history }) => {
   if (history.length === 0) return <div className="p-12 text-center text-slate-400 text-sm font-medium">No activity found.</div>;
 
   return (
-    <div className="divide-y divide-slate-50">
+    <div className="divide-y divide-slate-50 dark:divide-slate-700">
       {history.map((item, idx) => (
-        <div key={idx} className="p-6 hover:bg-slate-50 transition-colors group">
+        <div key={idx} className="p-6 hover:bg-slate-50 dark:hover:bg-slate-900/20 transition-colors group">
           <div className="flex justify-between items-center mb-3">
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider bg-slate-100 px-2 py-1 rounded-md">{formatDateForDisplay(item.date)}</span>
+            <span className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider bg-slate-100 dark:bg-slate-900/50 px-2 py-1 rounded-md">{formatDateForDisplay(item.date)}</span>
             <CategoryBadge category={item.category} />
           </div>
-          <p className="text-sm text-slate-700 leading-relaxed mb-4 font-medium">{item.summary}</p>
+          <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed mb-4 font-medium">{item.summary}</p>
           <div className="flex gap-2">
             {item.proof && (
-              <a href={item.proof} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 text-xs font-bold text-indigo-600 hover:text-indigo-800 bg-indigo-50 px-3 py-1.5 rounded-lg transition-colors hover:bg-indigo-100 border border-indigo-100">
+              <a href={item.proof} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 bg-indigo-50 dark:bg-indigo-900/30 px-3 py-1.5 rounded-lg transition-colors hover:bg-indigo-100 border border-indigo-100 dark:border-indigo-800">
                 <Upload className="w-3 h-3" /> View Proof
               </a>
             )}
             {item.file && (
-              <a href={item.file} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 text-xs font-bold text-emerald-600 hover:text-emerald-800 bg-emerald-50 px-3 py-1.5 rounded-lg transition-colors hover:bg-emerald-100 border border-emerald-100">
+              <a href={item.file} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:text-emerald-800 bg-emerald-50 dark:bg-emerald-900/30 px-3 py-1.5 rounded-lg transition-colors hover:bg-emerald-100 border border-emerald-100 dark:border-emerald-800">
                 <Paperclip className="w-3 h-3" /> View Upload
               </a>
             )}
@@ -1006,7 +1178,7 @@ const CategoryBadge = ({ category }) => {
 
 /* --- PROFILE SECTION --- */
 
-const ProfileSection = ({ user, onBack, onUpdate }) => {
+const ProfileSection = ({ user, onBack, onUpdate, onUploadStatusChange }) => {
   const [bio, setBio] = useState(user.bio || '');
   const [initialBio, setInitialBio] = useState(user.bio || ''); // NEW: Track initial for validation
   const [photo, setPhoto] = useState(user.photo || null);
@@ -1020,35 +1192,58 @@ const ProfileSection = ({ user, onBack, onUpdate }) => {
   const handlePhotoUpload = async (e) => {
     const file = e.target.files[0];
     if (file) {
-      setPhotoStatus('uploading'); // Start Loading
+      setPhotoStatus('uploading');
+      if (onUploadStatusChange) onUploadStatusChange(true); // Start Navbar Loader
 
-      // 1. Create a memory-safe preview URL (Blob)
-      // This is instant and takes 0 extra memory (fixes mobile crash)
-      const objectUrl = URL.createObjectURL(file);
-
-      // 2. Optimistic Update (Show instantly in UI, but DO NOT save to LocalStorage yet)
-      setPhoto(objectUrl);
-      if (onUpdate) onUpdate({ photo: objectUrl }, false);
-
-      // Artificial delay for visual feedback (as requested)
-      await new Promise(r => setTimeout(r, 1500));
-
-      setPhotoStatus('idle'); // Stop Loading / Show New Photo
-
-      // 3. Upload to Backend & Get Real Drive URL
-      // We pass the RAW FILE, not base64, which is much better for the API
-      // Note: We need to convert to base64 ONLY for the Google Script if it doesn't support raw blobs directly,
-      // but for the UI we keep it light.
+      // 1. Image Processing (Resize & Convert to PNG)
+      // This solves the backend issue where it forces ".png" extension.
+      // We convert everything to PNG here so it matches the backend logic perfectly.
       const reader = new FileReader();
-      reader.onloadend = async () => {
-        const base64ForApi = reader.result;
-        const result = await api.saveProfile({ name: user.name, bio, photo: base64ForApi });
+      reader.onload = (readerEvent) => {
+        const img = new Image();
+        img.onload = async () => {
+          // Calculate new dimensions (Max 800px - good for profile, fast to load)
+          let width = img.width;
+          let height = img.height;
+          const MAX_SIZE = 800;
 
-        // 4. Confirmed Update (Save real URL to LocalStorage)
-        if (result.success && result.photo) {
-          setPhoto(result.photo);
-          if (onUpdate) onUpdate({ photo: result.photo }, true);
-        }
+          if (width > height) {
+            if (width > MAX_SIZE) {
+              height *= MAX_SIZE / width;
+              width = MAX_SIZE;
+            }
+          } else {
+            if (height > MAX_SIZE) {
+              width *= MAX_SIZE / height;
+              height = MAX_SIZE;
+            }
+          }
+
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+
+          // Get PNG Base64 (Guaranteed PNG for Backend)
+          const pngBase64 = canvas.toDataURL('image/png');
+
+          // 2. Optimistic Update (Instant feedback)
+          setPhoto(pngBase64);
+
+          // 3. Upload to Backend
+          const result = await api.saveProfile({ name: user.name, bio, photo: pngBase64 });
+
+          setPhotoStatus('idle');
+          if (onUploadStatusChange) onUploadStatusChange(false); // Stop Navbar Loader
+
+          // 4. Confirm with real URL from backend
+          if (result.success && result.photo) {
+            setPhoto(result.photo);
+            if (onUpdate) onUpdate({ photo: result.photo }, true);
+          }
+        };
+        img.src = readerEvent.target.result;
       };
       reader.readAsDataURL(file);
     }
@@ -1104,10 +1299,10 @@ const ProfileSection = ({ user, onBack, onUpdate }) => {
 
         {/* Profile Card */}
         <div className="md:col-span-1">
-          <div className="bg-white rounded-3xl p-8 shadow-xl shadow-slate-200/50 border border-slate-100 text-center relative overflow-hidden group">
-            <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-br from-sky-400 to-blue-600"></div>
+          <div className="bg-white dark:bg-slate-800 rounded-3xl p-8 shadow-xl shadow-slate-200/50 dark:shadow-none border border-slate-100 dark:border-slate-700 text-center relative overflow-hidden group">
+            <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-br from-sky-400 to-blue-600 dark:from-sky-600 dark:to-blue-800"></div>
 
-            <div className="relative z-10 mt-12 mx-auto w-32 h-32 rounded-full border-4 border-white shadow-lg overflow-hidden bg-white group-hover:scale-105 transition-transform duration-300">
+            <div className="relative z-10 mt-12 mx-auto w-32 h-32 rounded-full border-4 border-white dark:border-slate-800 shadow-lg overflow-hidden bg-white dark:bg-slate-800 group-hover:scale-105 transition-transform duration-300">
               {/* Photo or Loader */}
               {photoStatus === 'uploading' ? (
                 <div className="w-full h-full flex flex-col items-center justify-center bg-slate-900/80 text-white backdrop-blur-sm">
@@ -1117,7 +1312,7 @@ const ProfileSection = ({ user, onBack, onUpdate }) => {
               ) : photo ? (
                 <img src={photo} alt="Profile" className="w-full h-full object-cover" />
               ) : (
-                <div className="w-full h-full flex items-center justify-center bg-slate-100 text-slate-400 text-4xl font-bold">{user.name.charAt(0)}</div>
+                <div className="w-full h-full flex items-center justify-center bg-slate-100 dark:bg-slate-700 text-slate-400 text-4xl font-bold">{user.name.charAt(0)}</div>
               )}
             </div>
 
@@ -1125,23 +1320,23 @@ const ProfileSection = ({ user, onBack, onUpdate }) => {
             <div className="mt-4 flex justify-center">
               <label className="cursor-pointer">
                 <input type="file" className="hidden" onChange={handlePhotoUpload} accept="image/*" disabled={photoStatus === 'uploading'} />
-                <div className="flex items-center gap-2 px-4 py-2 bg-sky-50 text-sky-600 rounded-xl hover:bg-sky-100 transition-colors text-xs font-bold ring-1 ring-sky-100">
+                <div className="flex items-center gap-2 px-4 py-2 bg-sky-50 dark:bg-sky-900/30 text-sky-600 dark:text-sky-400 rounded-xl hover:bg-sky-100 dark:hover:bg-sky-900/50 transition-colors text-xs font-bold ring-1 ring-sky-100 dark:ring-sky-800">
                   <Camera className="w-3.5 h-3.5" />
                   {photoStatus === 'uploading' ? 'Uploading...' : 'Update Photo'}
                 </div>
               </label>
             </div>
 
-            <h2 className="mt-4 text-xl font-bold text-slate-900">{user.name}</h2>
-            <p className="text-slate-500 font-medium text-sm">{user.internId}</p>
-            <div className="mt-4 inline-flex items-center gap-2 px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-bold">
+            <h2 className="mt-4 text-xl font-bold text-slate-900 dark:text-white">{user.name}</h2>
+            <p className="text-slate-500 dark:text-slate-400 font-medium text-sm">{user.internId}</p>
+            <div className="mt-4 inline-flex items-center gap-2 px-3 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded-full text-xs font-bold">
               <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div> Active Intern
             </div>
 
-            <div className="mt-8 pt-8 border-t border-slate-100">
+            <div className="mt-8 pt-8 border-t border-slate-100 dark:border-slate-700">
               <button
                 onClick={() => setShowReportModal(true)}
-                className="w-full py-2 px-4 bg-red-50 text-red-600 font-bold rounded-xl text-sm hover:bg-red-100 transition-colors flex items-center justify-center gap-2"
+                className="w-full py-2 px-4 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 font-bold rounded-xl text-sm hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors flex items-center justify-center gap-2"
               >
                 <AlertTriangle className="w-4 h-4" /> Report Issue / Inactive
               </button>
@@ -1151,24 +1346,24 @@ const ProfileSection = ({ user, onBack, onUpdate }) => {
 
         {/* Bio & Details */}
         <div className="md:col-span-2 space-y-6">
-          <div className="bg-white rounded-3xl p-8 shadow-xl shadow-slate-200/50 border border-slate-100">
-            <h3 className="text-lg font-bold text-slate-900 mb-6 flex items-center gap-2">
+          <div className="bg-white dark:bg-slate-800 rounded-3xl p-8 shadow-xl shadow-slate-200/50 dark:shadow-none border border-slate-100 dark:border-slate-700">
+            <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-6 flex items-center gap-2">
               <User className="w-5 h-5 text-sky-500" /> About Me
             </h3>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-bold text-slate-700 mb-2">Bio</label>
+                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Bio</label>
                 <textarea
                   value={bio}
                   onChange={(e) => setBio(e.target.value)}
-                  className="w-full h-32 p-4 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-sky-500 outline-none resize-none text-slate-700 font-medium"
+                  className="w-full h-32 p-4 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-sky-500 outline-none resize-none text-slate-700 dark:text-slate-300 font-medium"
                   placeholder="Tell us about yourself..."
                 ></textarea>
               </div>
               <div className="flex flex-col items-end gap-3">
                 {/* Validation Error Message */}
                 {validationError && (
-                  <div className="text-red-500 text-xs font-bold bg-red-50 px-3 py-1.5 rounded-lg border border-red-100 animate-in slide-in-from-right-2 fade-in">
+                  <div className="text-red-500 text-xs font-bold bg-red-50 dark:bg-red-900/20 px-3 py-1.5 rounded-lg border border-red-100 dark:border-red-900/30 animate-in slide-in-from-right-2 fade-in">
                     {validationError}
                   </div>
                 )}
@@ -1176,12 +1371,12 @@ const ProfileSection = ({ user, onBack, onUpdate }) => {
                   onClick={saveBio}
                   disabled={saveStatus === 'saving' || saveStatus === 'saved'}
                   className={`px-6 py-2 font-bold rounded-xl transition-all flex items-center gap-2 
-                    ${saveStatus === 'saved' ? 'bg-emerald-500 text-white hover:bg-emerald-600' : 'bg-slate-900 text-white hover:bg-slate-800'}
+                    ${saveStatus === 'saved' ? 'bg-emerald-500 text-white hover:bg-emerald-600' : 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-200'}
                     ${saveStatus === 'saving' ? 'opacity-80 cursor-wait' : ''}
                   `}
                 >
                   {saveStatus === 'saving' ? (
-                    <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span> Saving...</>
+                    <><span className="w-4 h-4 border-2 border-white/30 dark:border-slate-900/30 border-t-white dark:border-t-slate-900 rounded-full animate-spin"></span> Saving...</>
                   ) : saveStatus === 'saved' ? (
                     <><CheckCircle2 className="w-4 h-4" /> Saved Successfully!</>
                   ) : (
@@ -1246,6 +1441,7 @@ const AdminDashboard = ({ user, onLogout }) => {
   const [view, setView] = useState('overview'); // 'overview' | 'monitors'
   const [selectedGroup, setSelectedGroup] = useState(null); // Drill-down state
   const [selectedMember, setSelectedMember] = useState(null); // For Modal
+  const [selectedPhoto, setSelectedPhoto] = useState(null); // For Photo Viewer Modal
   const [memberHistory, setMemberHistory] = useState([]); // Logs for modal
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -1365,13 +1561,13 @@ const AdminDashboard = ({ user, onLogout }) => {
               {/* Navigation Links */}
               <div className="hidden md:flex items-center gap-1 bg-slate-800/50 p-1 rounded-xl border border-slate-700">
                 <button
-                  onClick={() => setView('overview')}
+                  onClick={() => { setView('overview'); setSelectedGroup(null); }}
                   className={`px-4 py-1.5 rounded-lg text-sm font-bold transition-all ${view === 'overview' ? 'bg-slate-700 text-white shadow-sm' : 'text-slate-400 hover:text-white'}`}
                 >
                   Overview
                 </button>
                 <button
-                  onClick={() => setView('monitors')}
+                  onClick={() => { setView('monitors'); setSelectedGroup(null); }}
                   className={`px-4 py-1.5 rounded-lg text-sm font-bold transition-all ${view === 'monitors' ? 'bg-slate-700 text-white shadow-sm' : 'text-slate-400 hover:text-white'}`}
                 >
                   Monitors
@@ -1407,9 +1603,25 @@ const AdminDashboard = ({ user, onLogout }) => {
                 <h2 className="text-2xl font-bold text-slate-900 border-l-4 border-purple-500 pl-4">Monitor Groups</h2>
                 <p className="text-slate-500 mt-1 pl-5">Displaying {groups.length} active monitor groups</p>
               </div>
-              <button className="px-4 py-2 bg-white border border-slate-200 text-slate-600 font-bold rounded-xl shadow-sm hover:bg-slate-50 transition-colors text-sm flex items-center gap-2">
-                <RefreshCw className="w-4 h-4" /> Sync Groups
-              </button>
+              <div className="flex gap-3">
+                <button
+                  onClick={async (e) => {
+                    const btn = e.currentTarget;
+                    const originalText = btn.innerHTML;
+                    btn.disabled = true;
+                    btn.innerHTML = `<span class="animate-spin inline-block mr-2">⟳</span> Syncing...`;
+                    await api.syncMonitorPermissions();
+                    btn.innerHTML = `<span class="text-emerald-600">✔ Done</span>`;
+                    setTimeout(() => { btn.disabled = false; btn.innerHTML = originalText; }, 2000);
+                  }}
+                  className="px-4 py-2 bg-white border border-slate-200 text-slate-600 font-bold rounded-xl shadow-sm hover:bg-slate-50 transition-colors text-sm flex items-center gap-2"
+                >
+                  <Lock className="w-4 h-4" /> Sync Permissions
+                </button>
+                <button className="px-4 py-2 bg-white border border-slate-200 text-slate-600 font-bold rounded-xl shadow-sm hover:bg-slate-50 transition-colors text-sm flex items-center gap-2">
+                  <RefreshCw className="w-4 h-4" /> Sync Groups
+                </button>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -1562,11 +1774,20 @@ const AdminDashboard = ({ user, onLogout }) => {
                           return (
                             <tr key={idx} className="group hover:bg-white hover:shadow-lg hover:shadow-slate-200/50 transition-all duration-300 border-b border-slate-50 last:border-0">
                               <td className="px-6 py-4 font-medium text-slate-900 flex items-center gap-4">
-                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-sm shadow-md bg-gradient-to-br ${idx % 3 === 0 ? 'from-purple-500 to-indigo-500' :
+                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-sm shadow-md bg-gradient-to-br overflow-hidden cursor-pointer ${m.photo ? 'bg-white' : (idx % 3 === 0 ? 'from-purple-500 to-indigo-500' :
                                   idx % 3 === 1 ? 'from-pink-500 to-rose-500' :
-                                    'from-amber-500 to-orange-500'
-                                  }`}>
-                                  {(displayName || "?").charAt(0)}
+                                    'from-amber-500 to-orange-500')
+                                  }`} onClick={(e) => {
+                                    if (m.photo && !m.photo.startsWith('blob:')) {
+                                      e.stopPropagation();
+                                      setSelectedPhoto(m.photo);
+                                    }
+                                  }}>
+                                  {m.photo && !m.photo.startsWith('blob:') ? (
+                                    <img src={m.photo} alt={displayName} className="w-full h-full object-cover hover:scale-110 transition-transform" />
+                                  ) : (
+                                    (displayName || "?").charAt(0)
+                                  )}
                                 </div>
                                 <div>
                                   <p className="font-bold text-slate-800" title={displayName}>{displayName}</p>
@@ -1693,15 +1914,221 @@ const AdminDashboard = ({ user, onLogout }) => {
             </div>
           </div>
         )}
+
+        {/* PHOTO VIEWER MODAL */}
+        {selectedPhoto && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md animate-in fade-in duration-200" onClick={() => setSelectedPhoto(null)}>
+            <div className="relative max-w-4xl max-h-[90vh] w-full flex items-center justify-center p-4 animate-in zoom-in-95 duration-200">
+              <img src={selectedPhoto} alt="Full Size" className="max-w-full max-h-full rounded-2xl shadow-2xl border-4 border-white/10" />
+              <button onClick={() => setSelectedPhoto(null)} className="absolute top-4 right-4 p-3 bg-white/10 hover:bg-white/20 text-white rounded-full transition-colors backdrop-blur-md border border-white/10">
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+          </div>
+        )}
       </main>
     </div>
   );
 };
 
+/* --- COURSES SECTION --- */
+
+const COURSES = [
+  {
+    id: 'basics1',
+    title: 'Computer Basics',
+    provider: 'GCFGlobal',
+    url: 'https://edu.gcfglobal.org/en/computerbasics/',
+    image: 'https://media.gcflearnfree.org/assets/models/computerbasics/topics/computerbasics_topic_01.jpg', // Placeholder logic in component if fail
+    color: 'blue'
+  },
+  {
+    id: 'basics2',
+    title: 'Professional Skills',
+    provider: 'IBM Skills',
+    url: 'https://skills.yourlearning.ibm.com/activity/PLAN-3E2A749669E2',
+    color: 'indigo'
+  },
+  {
+    id: 'aws',
+    title: 'Cloud Core',
+    provider: 'AWS Skill Builder',
+    url: 'https://skillbuilder.aws/learn/94T2BEN85A/aws-cloud-practitioner-essentials/8D79F3AVR7',
+    color: 'orange'
+  },
+  {
+    id: 'ai',
+    title: 'AI for Beginners',
+    provider: 'Microsoft',
+    url: 'https://github.com/microsoft/AI-For-Beginners',
+    color: 'rose'
+  }
+];
+
+// Refactored to use Props for State (Shared Source of Truth)
+const CoursesSection = ({ user, statuses, onUpdateStatus, onBack }) => {
+  return (
+    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-6xl mx-auto">
+      {/* Header */}
+      <div className="flex items-center gap-4 mb-8">
+        <button onClick={onBack} className="p-2 hover:bg-white/50 rounded-lg transition-colors text-slate-500">
+          <ArrowLeft className="w-5 h-5" />
+        </button>
+        <div>
+          <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Learning Path</h2>
+          <p className="text-slate-500 dark:text-slate-400">Curated courses for your professional growth.</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {COURSES.map((course) => {
+          const status = statuses[course.id] || 'not_started';
+          const isCompleted = status === 'completed';
+          const isPursuing = status === 'pursuing';
+
+          return (
+            <div key={course.id} className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-sm border border-slate-200 dark:border-slate-700 relative overflow-hidden group hover:shadow-xl transition-all duration-300">
+              {/* Decorative Background Blob */}
+              <div className={`absolute -right-10 -top-10 w-32 h-32 rounded-full bg-${course.color}-50 dark:bg-${course.color}-900/10 blur-2xl group-hover:scale-150 transition-transform duration-500`}></div>
+
+              <div className="relative z-10 flex flex-col h-full">
+                <div className="flex justify-between items-start mb-4">
+                  <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide border ${isCompleted ? 'bg-emerald-100 text-emerald-700 border-emerald-200' :
+                    isPursuing ? 'bg-sky-100 text-sky-700 border-sky-200' :
+                      'bg-slate-100 text-slate-500 border-slate-200'
+                    }`}>
+                    {isCompleted ? 'Completed' : isPursuing ? 'In Progress' : 'Not Started'}
+                  </span>
+                  <div className={`p-2 rounded-lg bg-${course.color}-50 text-${course.color}-600 dark:bg-slate-700 dark:text-${course.color}-400`}>
+                    <ExternalLink className="w-5 h-5" />
+                  </div>
+                </div>
+
+                <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-1 group-hover:text-purple-600 transition-colors">{course.title}</h3>
+                <p className="text-sm text-slate-500 dark:text-slate-400 font-medium mb-6">Provided by {course.provider}</p>
+
+                <div className="mt-auto space-y-3">
+                  <a
+                    href={course.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="block w-full text-center py-2.5 rounded-xl bg-slate-900 text-white font-semibold text-sm hover:bg-purple-600 shadow-md hover:shadow-purple-500/25 transition-all"
+                  >
+                    Start Course
+                  </a>
+
+                  {/* Status Toggles */}
+                  <div className="grid grid-cols-2 gap-2 bg-slate-50 dark:bg-slate-900/50 p-1 rounded-xl border border-slate-100 dark:border-slate-800">
+                    <button
+                      onClick={() => onUpdateStatus(course.id, 'pursuing')}
+                      className={`py-1.5 rounded-lg text-xs font-bold transition-all ${isPursuing ? 'bg-white shadow text-sky-600 border border-slate-200' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'
+                        }`}
+                    >
+                      Pursuing
+                    </button>
+                    <button
+                      onClick={() => onUpdateStatus(course.id, 'completed')}
+                      className={`py-1.5 rounded-lg text-xs font-bold transition-all ${isCompleted ? 'bg-white shadow text-emerald-600 border border-slate-200' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'
+                        }`}
+                    >
+                      Completed
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Motivation & Next Steps */}
+      <div className="mt-12 mb-8 bg-gradient-to-r from-slate-900 to-indigo-900 rounded-3xl p-8 relative overflow-hidden text-center shadow-2xl">
+        <div className="absolute top-0 left-0 w-full h-full opacity-10">
+          <div className="absolute top-10 left-10 w-24 h-24 bg-white rounded-full blur-3xl"></div>
+          <div className="absolute bottom-10 right-10 w-32 h-32 bg-purple-500 rounded-full blur-3xl"></div>
+        </div>
+
+        <div className="relative z-10 max-w-2xl mx-auto space-y-6">
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 border border-white/20 text-indigo-300 text-xs font-bold uppercase tracking-widest backdrop-blur-sm">
+            <span className="w-2 h-2 rounded-full bg-indigo-400 animate-pulse"></span>
+            Coming Soon
+          </div>
+
+          <h3 className="text-3xl md:text-4xl font-extrabold text-white tracking-tight">
+            "The capacity to learn is a gift; the ability to learn is a skill; the willingness to learn is a choice."
+          </h3>
+
+          <p className="text-indigo-200 text-lg font-medium leading-relaxed">
+            You are building the foundation of your future. Complete these core modules to unlock <span className="text-white font-bold decoration-wavy underline decoration-purple-400">Advanced GenAI & Cloud Architecture</span> specializations. The next level awaits!
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/* --- MAIN APP SECTION --- */
+
 const App = () => {
   const [user, setUser] = useState(null);
   const [dbUsers, setDbUsers] = useState([]);
   const [loadingUsers, setLoadingUsers] = useState(true);
+
+  // --- DARK MODE LOGIC ---
+  const [theme, setTheme] = useState(() => {
+    // 1. Check LocalStorage
+    if (localStorage.getItem('theme')) {
+      return localStorage.getItem('theme');
+    }
+    // 2. Check System Preference
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  });
+
+  // --- SHARED COURSE STATE (Frontend Only Fix) ---
+  const [courseProgress, setCourseProgress] = useState({});
+
+  useEffect(() => {
+    // Apply class to HTML root
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+    // Save preference
+    localStorage.setItem('theme', theme);
+  }, [theme]);
+
+  // Load Course Progress on User Load
+  useEffect(() => {
+    if (user && user.name) {
+      try {
+        const saved = localStorage.getItem(`courses_${user.name}`);
+        if (saved) {
+          setCourseProgress(JSON.parse(saved));
+        }
+      } catch (e) { console.error("Failed to load courses", e); }
+    }
+  }, [user]);
+
+  const updateCourseProgress = (courseId, status) => {
+    setCourseProgress(prev => {
+      // Toggle logic: if clicking same status, clear it? Or just force set?
+      // User requested "synced". Let's assume force set unless user wants toggle.
+      // Actually, standard behavior for "Pursuing" button is often toggle if active.
+      // But let's stick to direct setter for reliability first.
+      const newStatus = status; // Logic handled in components if needed, or here.
+      // If we use 'status' arg, we just set it.
+
+      const next = { ...prev, [courseId]: status };
+      localStorage.setItem(`courses_${user?.name}`, JSON.stringify(next));
+      return next;
+    });
+  };
+
+  const toggleTheme = () => {
+    setTheme(prev => prev === 'dark' ? 'light' : 'dark');
+  };
+
 
   // Auto-Logout on Idle (30 Minutes)
   const handleLogout = () => {
@@ -1724,12 +2151,12 @@ const App = () => {
       if (savedUser) {
         const u = JSON.parse(savedUser);
 
-        // Session Expiry Check (24 Hours)
-        const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+        // Session Expiry Check (1 Hour)
+        const SESSION_DURATION_MS = 60 * 60 * 1000;
         const now = new Date().getTime();
         const loginTime = u.loginTimestamp || 0;
 
-        if (now - loginTime > ONE_DAY_MS) {
+        if (now - loginTime > SESSION_DURATION_MS) {
           console.log("Session expired. Logging out.");
           localStorage.removeItem('intern_user');
           return; // Stop here, user stays null
@@ -1753,6 +2180,22 @@ const App = () => {
       .then(data => {
         setDbUsers(data);
         setLoadingUsers(false);
+
+        // [FIX] Sync current user with fresh data (e.g. isMonitor flag)
+        const stored = localStorage.getItem('intern_user');
+        if (stored) {
+          const u = JSON.parse(stored);
+          const freshUser = data.find(d => d.name === u.name);
+          if (freshUser) {
+            // Merge fresh data (like isMonitor) into current session
+            const merged = { ...u, ...freshUser };
+            // Only update if something changed (deep check is overkill, just set it)
+            if (JSON.stringify(u) !== JSON.stringify(merged)) {
+              setUser(merged);
+              localStorage.setItem('intern_user', JSON.stringify(merged));
+            }
+          }
+        }
       })
       .catch(() => setLoadingUsers(false));
   }, []);
@@ -1791,14 +2234,22 @@ const App = () => {
     <GlobalErrorBoundary>
       {user ? (
         user.role === 'admin' ? (
-          <AdminDashboard user={user} onLogout={handleLogout} />
+          <AdminDashboard user={user} onLogout={handleLogout} toggleTheme={toggleTheme} theme={theme} />
         ) : (
-          <Dashboard user={user} onLogout={handleLogout} onUpdateProfile={updateProfile} />
+          <Dashboard
+            user={user}
+            onLogout={handleLogout}
+            onUpdateProfile={updateProfile}
+            toggleTheme={toggleTheme}
+            theme={theme}
+            courseProgress={courseProgress}
+            onUpdateCourseProgress={updateCourseProgress}
+          />
         )
       ) : loadingUsers ? (
-        <div className="min-h-screen flex items-center justify-center font-bold text-slate-500">Loading Intern Portal...</div>
+        <div className="min-h-screen flex items-center justify-center font-bold text-slate-500 dark:bg-slate-900 dark:text-slate-400">Loading Intern Portal...</div>
       ) : (
-        <LoginScreen onLogin={handleLogin} users={dbUsers} />
+        <LoginScreen onLogin={handleLogin} users={dbUsers} toggleTheme={toggleTheme} theme={theme} />
       )}
     </GlobalErrorBoundary>
   );

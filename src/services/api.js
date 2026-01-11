@@ -85,5 +85,21 @@ export const api = {
             console.error("Error fetching groups:", error);
             return [];
         }
+    },
+
+    /**
+     * Triggers the backend to sync "Is Monitor" checkboxes based on Group data type.
+     */
+    syncMonitorPermissions: async () => {
+        try {
+            const response = await fetch(API_URL, {
+                method: "POST",
+                body: JSON.stringify({ action: "syncMonitorPermissions" }),
+            });
+            return await response.json();
+        } catch (error) {
+            console.error("Error syncing permissions:", error);
+            return { success: false, error: error.toString() };
+        }
     }
 };
