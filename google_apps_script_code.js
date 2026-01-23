@@ -553,34 +553,50 @@ function sendInternId(email) {
 
 
 // --- NEW: Robust Date Normalizer (Global Scope) ---
+// --- NEW: Robust Date Normalizer (LITERAL / FACE VALUE) ---
 function getCanonicalDateKey(dateValue) {
-    if (!dateValue) return "";
-    let str = dateValue.toString().trim();
+    if (!dateValue || dateValue === "") return "";
 
-    // Handle "Jan 22, 2026 • 10:30 AM" (or "Jan 22 • 2026..." due to bug)
-    // improved: Replace separator with space so we keep the whole date string for parsing
+    // [CHANGE] Convert TO STRING immediately to check 'Face Value' from getDisplayValues()
+    let str = String(dateValue).trim();
     if (str.includes("•")) str = str.replace(/•/g, " ");
 
-    // [FIX] Support DD-MM-YYYY or DD/MM/YYYY (Common in India/Excel)
-    // Regex to detect "23-01-2026" or "23/01/2026"
-    // Capture Groups: 1=Day, 2=Month, 3=Year
+    // 1. Try Regex for Date Parts: (\d) [/-] (\d) [/-] (\d4)
     const dmyPattern = /^(\d{1,2})[-/](\d{1,2})[-/](\d{4})/;
-    const match = str.match(dmyPattern);
+    const matchDMY = str.match(dmyPattern);
 
-    let d;
-    if (match) {
-        // Manually construct correct Date (Month is 0-indexed in JS)
-        // d = new Date(Year, Month-1, Day)
-        d = new Date(parseInt(match[3]), parseInt(match[2]) - 1, parseInt(match[1]));
-    } else {
-        // Fallback to standard parser (MM/DD/YYYY or YYYY-MM-DD or Text)
-        d = new Date(str);
+    if (matchDMY) {
+        let p1 = parseInt(matchDMY[1]); // Part 1
+        let p2 = parseInt(matchDMY[2]); // Part 2
+        let year = matchDMY[3];
+
+        let day, month;
+
+        // HEURISTIC: Detect MM/DD vs DD/MM
+        // Given US Sheets context causing timezone issues, we must prioritize MM/DD
+        if (p1 > 12) {
+            day = p1; // 24/01 -> Day 24
+            month = p2;
+        } else if (p2 > 12) {
+            month = p1; // 01/24 -> Day 24
+            day = p2;
+        } else {
+            // Ambiguous (e.g. 01/10) -> Default to MM/DD (US Standard)
+            // This fixes "Oct 1" appearing when user meant "Jan 10" in a US Sheet
+            month = p1;
+            day = p2;
+        }
+
+        return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
     }
 
-    // If invalid, return null (don't count garbage)
-    if (isNaN(d.getTime())) return null;
+    // 2. Fallback: Parse via Date object (Least desired, but necessary for weird formats)
+    const d = new Date(str);
+    if (!isNaN(d.getTime())) {
+        return Utilities.formatDate(d, "GMT+05:30", "yyyy-MM-dd");
+    }
 
-    return Utilities.formatDate(d, "GMT+05:30", "yyyy-MM-dd");
+    return null;
 }
 
 // --- SECURITY HELPER ---
@@ -615,102 +631,120 @@ const normalizeLog = (row, source) => {
         email: row[1],
         name: row[2], // Canonical Name
         course: row[3] || "Learning",
-        time: row[4] || "",
+        duration: row[4] || "", // [RENAME] time -> duration (Hours)
         issues: row[5] || "No",
         learning: row[6] || "",
         source: source
     };
 };
 
+// --- NEW: Helper to Extract Time String (LITERAL / FACE VALUE) ---
+function getTimeString(dateValue) {
+    if (!dateValue || dateValue === "") return "";
+
+    // [CHANGE] Literal String Parsing
+    let str = String(dateValue).trim().replace(/•/g, " ");
+
+    // Regex for Time: matches "21:30" or "9:30 PM"
+    // Capture: HH, MM, SS(opt), AM/PM(opt)
+    const timeReg = /(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM|am|pm)?/;
+    const match = str.match(timeReg);
+
+    if (match) {
+        let hh = parseInt(match[1]);
+        const mm = match[2];
+        const ampmVal = match[4] ? match[4].toUpperCase() : null;
+
+        if (ampmVal) {
+            return `${String(hh).padStart(2, '0')}:${mm} ${ampmVal}`;
+        } else {
+            // 24h format found -> Convert to 12h
+            const suffix = hh >= 12 ? "PM" : "AM";
+            hh = hh % 12 || 12;
+            return `${String(hh).padStart(2, '0')}:${mm} ${suffix}`;
+        }
+    }
+
+    // Fallback: Date Object if string parsing fails (e.g. ISO string)
+    const d = new Date(str);
+    if (!isNaN(d.getTime())) {
+        return Utilities.formatDate(d, "GMT+05:30", "hh:mm a");
+    }
+    return "";
+}
+
+
 function getHistory(name, internId) {
     if (!name) return ContentService.createTextOutput("[]").setMimeType(ContentService.MimeType.JSON);
 
-    // [SECURITY] Login Check (Skip for 'Test' or basic debugging if needed, but enforce for real data)
-    // We allow Admin to view anyone (handled in frontend logic? No, backend should be strict)
-    // Actually, Admin viewer needs a bypass or master key. 
-    // For now, let's assume if name == "Admin", we trust? No, "isValidUser" handles regular users.
-    // IF the requester provides the correct ID for the requested Name, they get data.
-    // [SECURITY] Login Check
-    // 1. Standard Check: Does the ID belong to the Name?
-    // 2. Admin Bypass: Is the ID the Master Admin ID?
+    // [SECURITY Bypass for Admin]
     if (!isValidUser(name, internId) && internId !== "CIALAbhayAkhil@2025") {
-        // Return empty to silently fail or error object? Empty is safer to not leak info.
         return ContentService.createTextOutput("[]").setMimeType(ContentService.MimeType.JSON);
     }
 
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     let allLogs = [];
 
-    console.log(`[getHistory] Starting search for: '${name}'`);
-
-    // 0. Scan Legacy 'Student Activity' (Schema: Col A=Name, Col B=Timestamp)
-    const sheetLegacy = ss.getSheetByName("Student Activity");
-    if (sheetLegacy && sheetLegacy.getLastRow() > 1) {
-        // Use getDisplayValues for WYSIWYG reading of Name, but we might want RAW date?
-        // Let's use getValues() for better Date handling, same as getUsers/getCanonicalDateKey
-        const lData = sheetLegacy.getDataRange().getValues();
-        for (let r = 1; r < lData.length; r++) {
-            const rowName = lData[r][0]; // Col A is Name
-            if (areNamesEquivalent(rowName, name)) {
-                // Push formatted log
-                allLogs.push({
-                    date: getCanonicalDateKey(lData[r][1]), // Col B is Date
-                    name: rowName,
-                    course: "Legacy Log", // No course col in Legacy?
-                    time: "",
-                    issues: "",
-                    learning: "Activity Logged via Form",
-                    proof: "",
-                    file: "",
-                    source: 'Student Activity'
-                });
-            }
-        }
-    }
-
     // 1. Scan M1 to M10
     // These are the "Read Only" tabs from the monitors
     for (let i = 1; i <= 10; i++) {
         const sheet = ss.getSheetByName(`M${i}`);
         if (sheet && sheet.getLastRow() > 1) {
-            const data = sheet.getDataRange().getValues();
+            // [FIX] Use getDisplayValues() to get "Face Value" Strings (Avoids Timezone Shifts)
+            const data = sheet.getDataRange().getDisplayValues();
             // Skip Header (Row 1)
             for (let r = 1; r < data.length; r++) {
                 const rowName = data[r][2]; // Col C is Name
 
                 // Strict Name Match
                 if (areNamesEquivalent(rowName, name)) {
-                    // console.log(`[GH-M${i}] MATCH at Row ${r+1}`);
                     const log = normalizeLog(data[r], `M${i}`);
+
                     // [FIX] Normalize Date for Frontend
-                    log.date = getCanonicalDateKey(log.date);
-                    allLogs.push(log);
+                    const cDate = getCanonicalDateKey(log.date);
+                    // [NEW] Extract Time
+                    const cTime = getTimeString(data[r][0]); // Col A is Timestamp (Raw Date Object)
+
+                    if (cDate) { // Only add if date is valid
+                        log.date = cDate;
+                        log.time = cTime; // [NEW] Populate Time
+                        allLogs.push(log);
+                    }
                 }
             }
         }
     }
 
     // 2. Scan Local 'Activity Logs'
-    // This is where NEW logs come in from the Dashboard (Schema: Name, Date, Category, Summary, Proof, File)
+    // This is where NEW logs come in from the Dashboard
     const actSheet = ss.getSheetByName("Activity Logs");
     if (actSheet && actSheet.getLastRow() > 1) {
-        const aData = actSheet.getDataRange().getDisplayValues();
+        // [FIX] Use getDisplayValues() to get RAW Strings (Face Value)
+        const aDataRaw = actSheet.getDataRange().getDisplayValues();
+
         // Skip Header
-        for (let r = 1; r < aData.length; r++) {
-            const rowName = aData[r][0]; // Col A is Name
+        for (let r = 1; r < aDataRaw.length; r++) {
+            const rowName = aDataRaw[r][0]; // Col A is Name
+            const dateVal = aDataRaw[r][1]; // Col B is Date String
 
             if (areNamesEquivalent(rowName, name)) {
-                allLogs.push({
-                    date: getCanonicalDateKey(aData[r][1]), // Col B is Date (Normalized)
-                    name: rowName,
-                    course: aData[r][2] || "Learning", // Col C is Category
-                    time: "",
-                    issues: "No",
-                    learning: aData[r][3] || "", // Col D is Summary
-                    proof: aData[r][4] || "",
-                    file: aData[r][5] || "",
-                    source: 'Activity Logs'
-                });
+                const cDate = getCanonicalDateKey(dateVal);
+                const cTime = getTimeString(dateVal); // [NEW] Extract Time
+
+                if (cDate) {
+                    allLogs.push({
+                        date: cDate,
+                        name: rowName,
+                        course: aDataRaw[r][2] || "Learning",
+                        time: cTime, // Submission Time (e.g. 10:30 AM)
+                        duration: aDataRaw[r][6] || "", // [NEW] Duration from Col G (Index 6)
+                        issues: "No",
+                        learning: aDataRaw[r][3] || "",
+                        proof: aDataRaw[r][4] || "",
+                        file: aDataRaw[r][5] || "",
+                        source: 'Activity Logs'
+                    });
+                }
             }
         }
     }
@@ -916,11 +950,13 @@ function saveProfile(data) {
 }
 
 // --- UPDATED SUBMIT log WITH FILE UPLOAD ---
+// --- UPDATED SUBMIT log WITH FILE UPLOAD ---
 function submitLog(data) {
     let sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_LOGS);
     if (!sheet) {
         sheet = SpreadsheetApp.getActiveSpreadsheet().insertSheet(SHEET_LOGS);
-        sheet.appendRow(["Name", "Date", "Category", "Summary", "Proof", "File"]);
+        // [UPDATE] Added "Duration" to header
+        sheet.appendRow(["Name", "Date", "Category", "Summary", "Proof", "File", "Duration"]);
     }
     const { name, internId, date, proof, file } = data;
 
@@ -930,30 +966,29 @@ function submitLog(data) {
             .setMimeType(ContentService.MimeType.JSON);
     }
 
-    // [FIX] Robust Key Handling (Frontend might send 'course' or 'learning')
+    // [FIX] Robust Key Handling
     const category = data.category || data.course || "Learning";
     const summary = data.summary || data.learning || "";
+    const duration = data.time || ""; // [NEW] Capture Duration/Time Spent
 
     let fileUrl = "";
 
     // Upload Logic for Daily Logs
     if (file && file.toString().includes("base64,")) {
         try {
-            // 1. Get/Create "Daily Tracker" Subfolder
             const mainFolder = DriveApp.getFolderById(DRIVE_FOLDER_ID);
             const subFolder = getOrCreateSubfolder(mainFolder, "Daily Tracker");
-
-            // 2. Upload File to Subfolder
             fileUrl = uploadToDriveFolder(subFolder, file, name + "_log_" + Date.now());
-
         } catch (e) {
             fileUrl = "ERROR_UPLOADING: " + e.toString();
         }
     } else if (file) {
-        fileUrl = file; // Assume it's a URL if not base64
+        fileUrl = file;
     }
 
-    sheet.appendRow([name, date, category, summary, proof, fileUrl]);
+    // [UPDATE] Appended Duration at Index 6 (Col G)
+    sheet.appendRow([name, date, category, summary, proof, fileUrl, duration]);
+
     return ContentService.createTextOutput(JSON.stringify({ success: true }))
         .setMimeType(ContentService.MimeType.JSON);
 }

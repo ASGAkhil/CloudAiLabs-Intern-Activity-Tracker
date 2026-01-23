@@ -688,9 +688,10 @@ const Dashboard = ({ user, onLogout, onUpdateProfile, toggleTheme, theme, course
     // Check History (First item is newest)
     if (history.length > 0) {
       const dStr = history[0].date;
-      if (dStr.includes('T') && dStr.includes('Z')) {
+      // [FIX] Robust Null Check to prevent Application Error
+      if (dStr && dStr.includes('T') && dStr.includes('Z')) {
         lastLogDate = new Date(dStr); // ISO
-      } else {
+      } else if (dStr) {
         // Custom Format: "Jan 8, 2026 • 10:30 PM" -> "Jan 8, 2026 10:30 PM"
         lastLogDate = new Date(dStr.replace(' •', ''));
       }
@@ -1356,15 +1357,31 @@ const HistoryList = ({ history }) => {
             {/* Card Content */}
             <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 group-hover:shadow-md group-hover:border-slate-200 dark:group-hover:border-slate-600 transition-all">
 
-              {/* Course Badge */}
-              <div className="mb-3">
-                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wide
-                  ${isAWS ? "bg-orange-50 text-orange-700 border border-orange-100" :
-                    isAI ? "bg-purple-50 text-purple-700 border border-purple-100" :
-                      "bg-blue-50 text-blue-700 border border-blue-100"
-                  }`}>
-                  {item.course || "General Learning"}
-                </span>
+              {/* Course & Time Header */}
+              <div className="mb-3 flex justify-between items-start gap-4">
+                <div className="flex flex-wrap gap-2">
+                  <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wide
+                    ${isAWS ? "bg-orange-50 text-orange-700 border border-orange-100" :
+                      isAI ? "bg-purple-50 text-purple-700 border border-purple-100" :
+                        "bg-blue-50 text-blue-700 border border-blue-100"
+                    }`}>
+                    {item.course || "General Learning"}
+                  </span>
+
+                  {/* Duration Badge */}
+                  {(item.duration || item.timeSpent) && (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-100 text-[10px] font-bold uppercase tracking-wide">
+                      <Clock className="w-3 h-3" /> {item.duration || item.timeSpent}
+                    </span>
+                  )}
+                </div>
+
+                {/* Time Display */}
+                {item.time && (
+                  <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest bg-slate-50 dark:bg-slate-700/50 px-2 py-1 rounded-md whitespace-nowrap">
+                    {item.time}
+                  </span>
+                )}
               </div>
 
               <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed font-medium whitespace-pre-wrap">
@@ -2189,7 +2206,15 @@ const AdminDashboard = ({ user, onLogout }) => {
                             }`}>
                             {log.course || 'Log'}
                           </span>
-                          <span className="text-xs font-medium text-slate-400">{formatDateForDisplay(log.date)}</span>
+                          {/* Duration Badge */}
+                          {(log.duration || log.timeSpent) && (
+                            <span className="flex items-center gap-1 px-2 py-1 rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-100 text-[10px] font-bold uppercase tracking-wide">
+                              <Clock className="w-3 h-3" /> {log.duration || log.timeSpent}
+                            </span>
+                          )}
+                          <span className="text-xs font-medium text-slate-400">
+                            {formatDateForDisplay(log.date)} {log.time && log.time !== "" ? `• ${log.time}` : ""}
+                          </span>
                         </div>
                         <p className="text-slate-700 text-sm leading-relaxed mb-3">{log.learning}</p>
                         <div className="flex gap-2">
