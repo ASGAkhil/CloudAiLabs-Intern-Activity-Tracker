@@ -20,9 +20,9 @@ export const api = {
     /**
      * Fetches history logs for a specific user.
      */
-    getHistory: async (name) => {
+    getHistory: async (name, internId) => {
         try {
-            const response = await fetch(`${API_URL}?action=getHistory&name=${encodeURIComponent(name)}`);
+            const response = await fetch(`${API_URL}?action=getHistory&name=${encodeURIComponent(name)}&id=${encodeURIComponent(internId)}&_t=${Date.now()}`);
             if (!response.ok) throw new Error("Network response was not ok");
             return await response.json();
         } catch (error) {
@@ -40,12 +40,28 @@ export const api = {
             // We use text/plain to avoid CORS preflight issues with Google Apps Script
             const response = await fetch(API_URL, {
                 method: "POST",
-                body: JSON.stringify({ action: "submitLog", ...logData }),
+                body: JSON.stringify({ action: "submitLog", internId: logData.internId, ...logData }),
             });
             return await response.json();
         } catch (error) {
             console.error("Error submitting log:", error);
             return { success: true };
+        }
+    },
+
+
+
+    // [NEW] Secure ID Delivery
+    sendInternId: async (email) => {
+        try {
+            const response = await fetch(API_URL, {
+                method: 'POST',
+                body: JSON.stringify({ action: 'sendInternId', email })
+            });
+            return await response.json();
+        } catch (e) {
+            console.error("API Error:", e);
+            return { error: "Network Error" };
         }
     },
 
@@ -64,7 +80,7 @@ export const api = {
         try {
             const response = await fetch(API_URL, {
                 method: "POST",
-                body: JSON.stringify({ action: "saveProfile", ...profileData }),
+                body: JSON.stringify({ action: "saveProfile", internId: profileData.internId, ...profileData }),
             });
             return await response.json();
         } catch (error) {
@@ -100,6 +116,33 @@ export const api = {
         } catch (error) {
             console.error("Error syncing permissions:", error);
             return { success: false, error: error.toString() };
+        }
+    },
+
+    /**
+     * CLOUD COURSE PROGRESS
+     */
+    fetchCourseProgress: async (name) => {
+        try {
+            const response = await fetch(`${API_URL}?action=getCourseProgress&name=${encodeURIComponent(name)}`);
+            if (!response.ok) throw new Error("Network response was not ok");
+            return await response.json();
+        } catch (error) {
+            console.error("Error fetching course progress:", error);
+            return {};
+        }
+    },
+
+    saveCourseProgress: async (name, internId, progress) => {
+        try {
+            const response = await fetch(API_URL, {
+                method: "POST",
+                body: JSON.stringify({ action: "saveCourseProgress", name, internId, progress }),
+            });
+            return await response.json();
+        } catch (error) {
+            console.error("Error saving course progress:", error);
+            return { success: false };
         }
     }
 };

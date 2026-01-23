@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Upload, CheckCircle2, Clock, LogOut, LayoutDashboard, History, FileText, ChevronRight, User, Briefcase, BarChart3, Search, Instagram, Linkedin, Paperclip, AlertTriangle, X, Camera, Lock, RefreshCw, Info, HelpCircle, Users, Eye, EyeOff, Moon, Sun, BookOpen, GraduationCap, ExternalLink, ArrowLeft } from 'lucide-react';
+import { Upload, CheckCircle2, Clock, LogOut, LayoutDashboard, History, FileText, ChevronRight, User, Briefcase, BarChart3, Search, Instagram, Linkedin, Paperclip, AlertTriangle, X, Camera, Lock, RefreshCw, Info, HelpCircle, Users, Eye, EyeOff, Moon, Sun, BookOpen, GraduationCap, ExternalLink, ArrowLeft, Trophy, Crown, Flame, Cloud, BrainCircuit } from 'lucide-react';
 import logo from './assets/logo.png';
 
 import { api } from './services/api';
@@ -8,14 +8,10 @@ import { api } from './services/api';
 const getTodayDateString = () => new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 
 const getFormattedDateTime = () => {
-  return new Date().toLocaleString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-    hour: 'numeric',
-    minute: 'numeric',
-    hour12: true
-  }).replace(',', ' •');
+  const now = new Date();
+  const date = now.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  const time = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: 'numeric', hour12: true });
+  return `${date} • ${time}`;
 };
 
 const formatDateForDisplay = (dateString) => {
@@ -69,6 +65,41 @@ const getRandomSuccessMessage = () => {
 
 
 
+/* --- CONSTANTS --- */
+const COURSES = [
+  {
+    id: 'basics1',
+    title: 'Computer Basics (GCF Global)',
+    provider: 'GCFGlobal',
+    link: 'https://edu.gcfglobal.org/en/computerbasics/',
+    url: 'https://edu.gcfglobal.org/en/computerbasics/',
+    color: 'blue'
+  },
+  {
+    id: 'basics2',
+    title: 'IBM Skills Planning',
+    provider: 'IBM Skills',
+    link: 'https://skills.yourlearning.ibm.com/activity/PLAN-3E2A749669E2',
+    url: 'https://skills.yourlearning.ibm.com/activity/PLAN-3E2A749669E2',
+    color: 'indigo'
+  },
+  {
+    id: 'aws',
+    title: 'AWS Cloud Practitioner Essentials',
+    provider: 'AWS Skill Builder',
+    link: 'https://skillbuilder.aws/learn/94T2BEN85A/aws-cloud-practitioner-essentials/8D79F3AVR7',
+    url: 'https://skillbuilder.aws/learn/94T2BEN85A/aws-cloud-practitioner-essentials/8D79F3AVR7',
+    color: 'orange'
+  },
+  {
+    id: 'ai',
+    title: 'Microsoft AI For Beginners',
+    provider: 'Microsoft',
+    link: 'https://github.com/microsoft/AI-For-Beginners',
+    url: 'https://github.com/microsoft/AI-For-Beginners',
+    color: 'rose'
+  }
+];
 
 /* --- API HELPERS --- */
 
@@ -76,11 +107,15 @@ export async function submitDailyLog(userName, formData) {
   try {
     const result = await api.submitLog({
       name: userName,
-      date: getFormattedDateTime(), // Send full date & time
-      category: formData.category,
-      summary: formData.summary,
-      proof: formData.proof,
-      file: formData.file
+      internId: formData.internId, // [SECURITY] Pass ID
+
+      date: getFormattedDateTime(),
+      category: formData.course, // Backend expects 'category'
+      time: formData.time,
+      issues: formData.issues,
+      summary: formData.learning, // Backend expects 'summary'
+      proof: '',
+      file: null
     });
     return result;
   } catch (e) {
@@ -89,8 +124,8 @@ export async function submitDailyLog(userName, formData) {
   }
 }
 
-export async function fetchStudentHistory(studentName) {
-  return await api.getHistory(studentName);
+export async function fetchStudentHistory(studentName, internId) {
+  return await api.getHistory(studentName, internId);
 }
 
 export async function fetchAllMembers() {
@@ -229,9 +264,35 @@ const LoginScreen = ({ onLogin, users, toggleTheme, theme }) => {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [showPassword, setShowPassword] = useState(false); // NEW: Password Visibility State
 
+  // [NEW] Forgot ID State
+  const [showForgotId, setShowForgotId] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotStatus, setForgotStatus] = useState({ type: '', msg: '' });
+
   const filteredUsers = users.filter(u =>
     u.role !== 'admin' && u.name.toLowerCase().includes(name.toLowerCase())
   );
+
+  // [NEW] Forgot ID Handler
+  const handleForgotIdSubmit = async (e) => {
+    e.preventDefault();
+    if (!forgotEmail) return;
+
+    setForgotStatus({ type: 'loading', msg: 'Checking records...' });
+
+    try {
+      const result = await api.sendInternId(forgotEmail);
+
+      if (result && result.success) { // Handle "success: true" from backend
+        setForgotStatus({ type: 'success', msg: 'Sent! Check your email inbox.' });
+        setForgotEmail('');
+      } else {
+        setForgotStatus({ type: 'error', msg: result.error || 'Email not found.' });
+      }
+    } catch (e) {
+      setForgotStatus({ type: 'error', msg: 'Connection failed.' });
+    }
+  };
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -277,6 +338,64 @@ const LoginScreen = ({ onLogin, users, toggleTheme, theme }) => {
 
       <div className="w-full max-w-md bg-white/80 dark:bg-slate-800/80 backdrop-blur-xl rounded-3xl shadow-brand-glow border border-white/50 dark:border-slate-700 overflow-hidden transform transition-all hover:scale-[1.01] duration-500 relative z-10">
         <div className="p-10 text-center">
+          {/* [NEW] Forgot ID MODAL OVERLAY */}
+          {showForgotId && (
+            <div className="absolute inset-0 z-50 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md flex flex-col justify-center px-8 animate-in fade-in zoom-in-95 duration-300">
+              <div className="absolute top-4 right-4">
+                <button
+                  type="button"
+                  onClick={() => { setShowForgotId(false); setForgotStatus({ type: '', msg: '' }); }}
+                  className="p-2 bg-slate-100 dark:bg-slate-800 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700 transition"
+                >
+                  <X size={20} className="text-slate-500 dark:text-slate-400" />
+                </button>
+              </div>
+
+              <div className="text-center mb-6">
+                <div className="w-12 h-12 bg-sky-100 dark:bg-sky-900/30 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <HelpCircle className="text-sky-500 w-6 h-6" />
+                </div>
+                <h3 className="text-xl font-bold text-slate-900 dark:text-white">Get Login ID</h3>
+                <p className="text-sm text-slate-500 dark:text-slate-400 max-w-xs mx-auto mt-2">
+                  Enter your registered email address. We'll send your Intern ID to your inbox.
+                </p>
+              </div>
+
+              <form onSubmit={handleForgotIdSubmit} className="space-y-4">
+                <div className="text-left">
+                  <label className="block text-xs font-bold text-slate-400 uppercase mb-1 ml-1">Registered Email</label>
+                  <input
+                    type="email"
+                    value={forgotEmail}
+                    onChange={(e) => setForgotEmail(e.target.value)}
+                    className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-400 focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 outline-none transition-all"
+                    placeholder="name@example.com"
+                    required
+                    autoFocus
+                  />
+                </div>
+
+                {forgotStatus.msg && (
+                  <div className={`text-sm px-4 py-3 rounded-xl font-medium flex items-center gap-2 ${forgotStatus.type === 'error' ? 'bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400' :
+                    forgotStatus.type === 'success' ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400' :
+                      'bg-sky-50 text-sky-600 dark:bg-sky-900/20 dark:text-sky-300'
+                    }`}>
+                    {forgotStatus.type === 'success' && <CheckCircle2 size={16} />}
+                    {forgotStatus.msg}
+                  </div>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={forgotStatus.type === 'loading' || forgotStatus.type === 'success'}
+                  className="w-full bg-slate-900 dark:bg-sky-600 text-white font-bold py-3.5 rounded-xl hover:bg-slate-800 dark:hover:bg-sky-500 transition-all shadow-lg shadow-sky-500/10 disabled:opacity-70 disabled:cursor-not-allowed"
+                >
+                  {forgotStatus.type === 'loading' ? 'Sending...' : 'Send to Inbox'}
+                </button>
+              </form>
+            </div>
+          )}
+
           <div className="relative z-10 animate-fly-in">
             <div className="w-40 h-40 bg-white dark:bg-slate-700 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-xl shadow-sky-100 dark:shadow-none ring-1 ring-slate-100 dark:ring-slate-600 p-6 animate-float">
               <img src={logo} alt="CloudAiLabs Logo" className="w-full h-full object-contain drop-shadow-lg" />
@@ -365,6 +484,16 @@ const LoginScreen = ({ onLogin, users, toggleTheme, theme }) => {
                 <>Sign In <ChevronRight className="w-5 h-5 opacity-80" /></>
               )}
             </button>
+            {/* NEW: Forgot ID Link */}
+            <div className="pt-2 text-center">
+              <button
+                type="button"
+                onClick={() => setShowForgotId(true)}
+                className="text-xs text-slate-400 hover:text-sky-500 dark:text-slate-500 dark:hover:text-sky-400 transition-colors font-medium"
+              >
+                First time logging in? Get your ID here.
+              </button>
+            </div>
           </form>
         </div>
       </div>
@@ -376,6 +505,8 @@ const LoginScreen = ({ onLogin, users, toggleTheme, theme }) => {
           Contact: akhil@cloudailabs.in
         </a>
       </div>
+
+
 
       <p className="mt-8 text-slate-400 text-xs font-medium tracking-wide">© 2026 CloudAiLabs • Internal Tool</p>
     </div>
@@ -444,12 +575,8 @@ const CourseTracker = ({ user, progress, onUpdateStatus, onViewCourses }) => {
   // Removed internal state. Uses Props.
   const [loading, setLoading] = useState(true);
 
-  const COURSES = [
-    { id: 'basics1', title: 'Computer Basics (GCF Global)', link: 'https://edu.gcfglobal.org/en/computerbasics/' },
-    { id: 'basics2', title: 'IBM Skills Planning', link: 'https://skills.yourlearning.ibm.com/activity/PLAN-3E2A749669E2' },
-    { id: 'aws', title: 'AWS Cloud Practitioner Essentials', link: 'https://skillbuilder.aws/learn/94T2BEN85A/aws-cloud-practitioner-essentials/8D79F3AVR7' },
-    { id: 'ai', title: 'Microsoft AI For Beginners', link: 'https://github.com/microsoft/AI-For-Beginners' }
-  ];
+  // COURSES constant moved to global scope
+
 
   const handleToggle = (courseId, statusType) => {
     // Toggle Logic: If clicking same status, clear it (reset to 'not_started'). If different, set it.
@@ -464,7 +591,7 @@ const CourseTracker = ({ user, progress, onUpdateStatus, onViewCourses }) => {
   return (
     <div className="mb-8 animate-in fade-in slide-in-from-bottom-5 duration-700">
       <div className="flex justify-between items-end mb-4">
-        <div>
+        <div className="flex-grow">
           <h2 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
             <GraduationCap className="w-6 h-6 text-indigo-600" /> Recommended Courses
           </h2>
@@ -510,8 +637,22 @@ const Dashboard = ({ user, onLogout, onUpdateProfile, toggleTheme, theme, course
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isPhotoUploading, setIsPhotoUploading] = useState(false); // NEW: Lifted state to show in Navbar
 
-  // Calculate progress based on history
-  const daysCompleted = history.length;
+  // Calculate progress based on UNIQUE days
+  const uniqueDates = new Set();
+  if (Array.isArray(history)) {
+    history.forEach((item, index) => {
+      // Robust check: Use 'date' if available, otherwise 'index' to ensure count
+      let dKey = item.date;
+      if (!dKey || dKey === "") {
+        dKey = "fallback-" + index;
+      } else {
+        dKey = dKey.toString().trim();
+      }
+      uniqueDates.add(dKey);
+    });
+  }
+
+  const daysCompleted = uniqueDates.size;
   const todayStr = getTodayDateString();
 
   // --- SMART LOCK LOGIC ---
@@ -523,6 +664,22 @@ const Dashboard = ({ user, onLogout, onUpdateProfile, toggleTheme, theme, course
   useEffect(() => {
     setGreetingSubtitle(getRandomSubtitle());
   }, []); // Run once on mount
+
+  // --- NEW: Auto-Update Course Status based on Logs ---
+  useEffect(() => {
+    if (!history.length) return;
+
+    COURSES.forEach(course => {
+      // Check if user has ANY log for this course
+      const hasLog = history.some(log => log.course === course.title);
+      const currentStatus = courseProgress[course.id];
+
+      // If found in history AND currently 'not_started' (or undefined), set to 'pursuing'
+      if (hasLog && (!currentStatus || currentStatus === 'not_started')) {
+        onUpdateCourseProgress(course.id, 'pursuing');
+      }
+    });
+  }, [history, courseProgress]);
 
   useEffect(() => {
     // 1. Get Latest Log Time
@@ -580,16 +737,18 @@ const Dashboard = ({ user, onLogout, onUpdateProfile, toggleTheme, theme, course
 
   useEffect(() => {
     // Initial fetch
-    fetchStudentHistory(user.name).then(data => {
-      setHistory(data);
-      // Artificial delay for premium feel
-      setTimeout(() => setInitialLoading(false), 2000);
-    });
-  }, [user.name]);
+    if (user.name && user.internId) {
+      fetchStudentHistory(user.name, user.internId).then(data => {
+        setHistory(data);
+        // Artificial delay for premium feel
+        setTimeout(() => setInitialLoading(false), 2000);
+      });
+    }
+  }, [user.name, user.internId]);
 
   const handleManualRefresh = async () => {
     setIsRefreshing(true);
-    const data = await fetchStudentHistory(user.name);
+    const data = await fetchStudentHistory(user.name, user.internId);
     setHistory(data);
     setTimeout(() => setIsRefreshing(false), 800); // Min spin time
   };
@@ -604,7 +763,7 @@ const Dashboard = ({ user, onLogout, onUpdateProfile, toggleTheme, theme, course
 
     // 3. Re-fetch in background
     setTimeout(() => {
-      fetchStudentHistory(user.name).then(setHistory);
+      fetchStudentHistory(user.name, user.internId).then(setHistory);
     }, 2000);
   };
 
@@ -692,14 +851,14 @@ const Dashboard = ({ user, onLogout, onUpdateProfile, toggleTheme, theme, course
           <>
             {/* --- NEW: Premium Welcome Loading Screen --- */
               initialLoading && (
-                <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-white/80 backdrop-blur-xl animate-out fade-out duration-700 pointer-events-none">
+                <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl animate-out fade-out duration-700 pointer-events-none">
                   <div className="relative">
-                    <div className="w-24 h-24 rounded-full border-4 border-slate-100 border-t-sky-500 animate-spin"></div>
+                    <div className="w-24 h-24 rounded-full border-4 border-slate-100 dark:border-slate-800 border-t-sky-500 animate-spin"></div>
                     <div className="absolute inset-0 flex items-center justify-center">
                       <img src={logo} alt="Loading" className="w-10 h-10 object-contain opacity-50 animate-pulse" />
                     </div>
                   </div>
-                  <h2 className="mt-8 text-xl font-bold text-slate-800 tracking-tight animate-pulse">Loading your progress...</h2>
+                  <h2 className="mt-8 text-xl font-bold text-slate-800 dark:text-white tracking-tight animate-pulse">Loading your progress...</h2>
                   <p className="text-slate-400 text-sm font-medium mt-2">Connecting to CloudAiLabs Database</p>
                 </div>
               )}
@@ -731,13 +890,13 @@ const Dashboard = ({ user, onLogout, onUpdateProfile, toggleTheme, theme, course
                   variant="circle"
                 />
                 <StatCard
-                  label="Logs Submitted"
-                  value={daysCompleted}
-                  sub="Total Active Days"
+                  label="Total Logs"
+                  value={history ? history.length : 0}
+                  sub="Entries Submitted"
                   icon={<FileText className="w-6 h-6 text-emerald-600" />}
                   color="emerald"
                   variant="circle"
-                  progress={Math.min((daysCompleted / 90) * 100, 100)}
+                  progress={Math.min((history.length / 90) * 100, 100)}
                 />
                 {daysCompleted >= 90 ? (
                   <div className="bg-gradient-to-br from-amber-100 to-amber-50 p-6 rounded-3xl shadow-sm border border-amber-200 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group cursor-pointer relative overflow-hidden">
@@ -887,12 +1046,12 @@ const Dashboard = ({ user, onLogout, onUpdateProfile, toggleTheme, theme, course
       </main>
 
       {/* Footer */}
-      <footer className="bg-white border-t border-slate-200 mt-auto">
+      <footer className="bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 mt-auto">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
             <div>
-              <h3 className="text-lg font-bold text-slate-900 mb-4">Cloud AI Labs</h3>
-              <p className="text-slate-500 text-sm leading-relaxed mb-6">
+              <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4">Cloud AI Labs</h3>
+              <p className="text-slate-500 dark:text-slate-400 text-sm leading-relaxed mb-6">
                 Cloud-native IT consulting and education NGO with a PAN-India presence, specializing in Cloud Pre-Sales, Project Delivery, and AI-driven solutions.
               </p>
               <div className="flex gap-3">
@@ -901,7 +1060,7 @@ const Dashboard = ({ user, onLogout, onUpdateProfile, toggleTheme, theme, course
               </div>
             </div>
             <div>
-              <h3 className="text-lg font-bold text-slate-900 mb-4">Quick Links</h3>
+              <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4">Quick Links</h3>
               <ul className="space-y-3 text-sm text-slate-500 font-medium">
                 <li><a href="https://www.cloudailabs.in" target="_blank" rel="noreferrer" className="hover:text-sky-600 transition-colors">Home</a></li>
                 <li><a href="https://www.cloudailabs.in" target="_blank" rel="noreferrer" className="hover:text-sky-600 transition-colors">Internship Program</a></li>
@@ -910,7 +1069,7 @@ const Dashboard = ({ user, onLogout, onUpdateProfile, toggleTheme, theme, course
               </ul>
             </div>
             <div>
-              <h3 className="text-lg font-bold text-slate-900 mb-4">Contact Us</h3>
+              <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4">Contact Us</h3>
               <ul className="space-y-4 text-sm text-slate-500 font-medium">
                 <li className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center text-sky-600"><div className="w-2 h-2 bg-sky-500 rounded-full"></div></div>
@@ -923,7 +1082,7 @@ const Dashboard = ({ user, onLogout, onUpdateProfile, toggleTheme, theme, course
               </ul>
             </div>
           </div>
-          <div className="border-t border-slate-100 mt-12 pt-8 text-center text-xs text-slate-400 font-medium">
+          <div className="border-t border-slate-100 dark:border-slate-800 mt-12 pt-8 text-center text-xs text-slate-400 font-medium">
             © 2026 Cloud Ai Labs. All rights reserved. (NGO Reg. in process)
           </div>
         </div>
@@ -963,11 +1122,14 @@ const CircularProgress = ({ progress, size = 120, strokeWidth = 10, color = "tex
         />
       </svg>
       <div className="absolute flex flex-col items-center">
-        <span className="text-2xl font-bold text-slate-800">{Math.round(progress)}%</span>
+        <span className="text-2xl font-bold text-slate-800 dark:text-white">{Math.round(progress)}%</span>
       </div>
     </div>
   );
 };
+
+
+
 
 const StatCard = ({ label, value, sub, icon, progress, color, variant }) => (
   <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-700 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group h-full flex flex-col justify-between">
@@ -1006,123 +1168,125 @@ const StatCard = ({ label, value, sub, icon, progress, color, variant }) => (
 );
 
 const DailyLogForm = ({ user, onSuccess }) => {
-  const [formData, setFormData] = useState({ category: 'Learning', summary: '', proof: '', file: null });
+  const [formData, setFormData] = useState({
+    course: 'Computer Basics (GCF Global)',
+    time: '',
+    issues: 'No',
+    learning: ''
+  });
   const [status, setStatus] = useState('idle');
-
-  const handleFileChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setFormData(prev => ({ ...prev, file: reader.result }));
-      };
-      reader.readAsDataURL(file);
-    }
-  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setStatus('submitting');
 
-    // Construct log object for optimistic update
+    // Optimistic Object
     const newLog = {
       name: user.name,
-      date: getFormattedDateTime(), // Use full date-time for immediate feedback
-      category: formData.category,
-      summary: formData.summary,
-      proof: formData.proof,
-      file: formData.file
+      internId: user.internId, // [SECURITY] Pass ID for Optimistic UI & API
+      date: getFormattedDateTime(),
+      course: formData.course,
+      time: formData.time,
+      issues: formData.issues,
+      learning: formData.learning
     };
 
-    const result = await submitDailyLog(user.name, formData);
+    const result = await submitDailyLog(user.name, { ...formData, internId: user.internId });
     if (result.success) {
       setStatus('success');
-      setFormData({ category: 'Learning', summary: '', proof: '', file: null });
-      if (onSuccess) onSuccess(newLog); // Pass data back
+      setFormData({ course: 'Computer Basics (GCF Global)', time: '', issues: 'No', learning: '' });
+      if (onSuccess) onSuccess(newLog);
       setTimeout(() => setStatus('idle'), 3000);
     } else setStatus('error');
   };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      <div className="grid grid-cols-2 gap-5">
-        <div className="col-span-2 sm:col-span-1">
-          <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Category</label>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+
+        {/* Course Selection */}
+        <div>
+          <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Course Name</label>
           <div className="relative group">
             <select
-              value={formData.category}
-              onChange={e => setFormData({ ...formData, category: e.target.value })}
-              className="w-full text-sm pl-4 pr-10 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all appearance-none font-medium group-hover:bg-slate-100 dark:group-hover:bg-slate-800 dark:text-white"
+              value={formData.course}
+              onChange={e => setFormData({ ...formData, course: e.target.value })}
+              className="w-full text-sm pl-4 pr-10 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none appearance-none font-medium dark:text-white"
             >
-              <option>Learning</option>
-              <option>Coding</option>
-              <option>Marketing</option>
-              <option>Research</option>
+              {COURSES.map(c => <option key={c.id} value={c.title}>{c.title}</option>)}
+              <option value="Other">Other</option>
             </select>
-            <ChevronRight className="w-4 h-4 text-slate-400 absolute right-3 top-3.5 rotate-90 pointer-events-none group-hover:text-slate-600 transition-colors" />
+            <ChevronRight className="w-4 h-4 text-slate-400 absolute right-3 top-3.5 rotate-90 pointer-events-none" />
           </div>
         </div>
-        <div className="col-span-2 sm:col-span-1">
-          <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Proof Link <span className="text-slate-400 font-normal">(Optional)</span></label>
-          <div className="relative group">
-            <input
-              type="text"
-              value={formData.proof}
-              onChange={e => setFormData({ ...formData, proof: e.target.value })}
-              placeholder="https://github.com/..."
-              className="w-full text-sm px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all placeholder:text-slate-400 font-medium group-hover:bg-slate-100 dark:group-hover:bg-slate-800 dark:text-white"
-            />
-          </div>
-        </div>
-      </div>
 
-      {/* File Upload Section */}
-      <div>
-        <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Upload Files</label>
-        <div className="border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-xl p-6 text-center hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:border-slate-300 transition-all cursor-pointer relative">
-          <input type="file" onChange={handleFileChange} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
-          <div className="flex flex-col items-center justify-center gap-2 pointer-events-none">
-            <div className="w-10 h-10 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-500 dark:text-indigo-400 rounded-full flex items-center justify-center mb-1">
-              <Upload className="w-5 h-5" />
-            </div>
-            {formData.file ? (
-              <p className="text-sm font-bold text-emerald-600 flex items-center gap-1"><CheckCircle2 className="w-4 h-4" /> File Selected</p>
-            ) : (
-              <>
-                <p className="text-sm font-medium text-slate-900 dark:text-slate-300">Click to upload or drag and drop</p>
-                <p className="text-xs text-slate-500 dark:text-slate-500">SVG, PNG, JPG or PDF (max. 5MB)</p>
-              </>
-            )}
-          </div>
-        </div>
-      </div>
-
-      <div>
-        <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Work Summary</label>
-        <div className="relative group">
-          <textarea
-            value={formData.summary}
-            onChange={e => setFormData({ ...formData, summary: e.target.value })}
-            placeholder="Describe what you accomplished today..."
+        {/* Time Spent */}
+        <div>
+          <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Time Spent (e.g. 2 hrs)</label>
+          <input
+            type="text"
+            value={formData.time}
+            onChange={e => setFormData({ ...formData, time: e.target.value })}
+            placeholder="e.g. 40 mins"
             required
-            className="w-full text-sm p-4 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none min-h-[180px] resize-none transition-all placeholder:text-slate-400 leading-relaxed font-medium group-hover:bg-slate-100 dark:group-hover:bg-slate-800 dark:text-white"
-          ></textarea>
+            className="w-full text-sm px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none font-medium dark:text-white"
+          />
         </div>
-        <p className="text-right text-xs text-slate-400 mt-2 font-medium">Be specific and concise.</p>
+      </div>
+
+      {/* Any Issues? */}
+      <div>
+        <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Any Issues?</label>
+        <div className="flex gap-4">
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="radio"
+              name="issues"
+              value="No"
+              checked={formData.issues === 'No'}
+              onChange={e => setFormData({ ...formData, issues: e.target.value })}
+              className="accent-indigo-600 w-4 h-4"
+            />
+            <span className="text-sm font-medium text-slate-700 dark:text-slate-300">No</span>
+          </label>
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="radio"
+              name="issues"
+              value="Yes"
+              checked={formData.issues === 'Yes'}
+              onChange={e => setFormData({ ...formData, issues: e.target.value })}
+              className="accent-red-600 w-4 h-4"
+            />
+            <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Yes</span>
+          </label>
+        </div>
+      </div>
+
+      {/* Learning Content */}
+      <div>
+        <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">What did you learn today?</label>
+        <textarea
+          value={formData.learning}
+          onChange={e => setFormData({ ...formData, learning: e.target.value })}
+          placeholder="Describe topics covered..."
+          required
+          className="w-full text-sm p-4 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none min-h-[150px] resize-none font-medium dark:text-white"
+        ></textarea>
       </div>
 
       <div className="pt-2">
         <button
           type="submit"
           disabled={status === 'submitting'}
-          className="group w-full py-4 px-6 bg-slate-900 dark:bg-white hover:bg-black dark:hover:bg-slate-200 text-white dark:text-slate-900 font-bold rounded-2xl transition-all shadow-xl shadow-slate-200 dark:shadow-none hover:shadow-2xl hover:-translate-y-0.5 disabled:opacity-75 disabled:shadow-none disabled:transform-none flex justify-center items-center gap-2"
+          className="group w-full py-4 px-6 bg-slate-900 dark:bg-white hover:bg-black dark:hover:bg-slate-200 text-white dark:text-slate-900 font-bold rounded-2xl transition-all shadow-xl flex justify-center items-center gap-2"
         >
           {status === 'submitting' ? (
-            <span className="w-5 h-5 border-2 border-white/30 dark:border-slate-900/30 border-t-white dark:border-t-slate-900 rounded-full animate-spin"></span>
+            <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
           ) : status === 'success' ? (
             <><CheckCircle2 className="w-5 h-5 text-emerald-400 dark:text-emerald-600" /> Log Saved!</>
           ) : (
-            <>Submit Daily Log <span className="bg-white/10 dark:bg-slate-900/10 p-1 rounded-md group-hover:translate-x-1 transition-transform"><ChevronRight className="w-4 h-4" /></span></>
+            <>Submit Daily Log <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" /></>
           )}
         </button>
       </div>
@@ -1131,31 +1295,106 @@ const DailyLogForm = ({ user, onSuccess }) => {
 };
 
 const HistoryList = ({ history }) => {
-  if (history.length === 0) return <div className="p-12 text-center text-slate-400 text-sm font-medium">No activity found.</div>;
+  if (history.length === 0) return (
+    <div className="h-full flex flex-col items-center justify-center text-slate-400 p-8 space-y-4">
+      <div className="w-16 h-16 bg-slate-50 dark:bg-slate-800 rounded-full flex items-center justify-center mb-2">
+        <History className="w-8 h-8 text-slate-300 dark:text-slate-600" />
+      </div>
+      <p className="text-sm font-medium">No activity found yet.</p>
+    </div>
+  );
 
   return (
-    <div className="divide-y divide-slate-50 dark:divide-slate-700">
-      {history.map((item, idx) => (
-        <div key={idx} className="p-6 hover:bg-slate-50 dark:hover:bg-slate-900/20 transition-colors group">
-          <div className="flex justify-between items-center mb-3">
-            <span className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider bg-slate-100 dark:bg-slate-900/50 px-2 py-1 rounded-md">{formatDateForDisplay(item.date)}</span>
-            <CategoryBadge category={item.category} />
-          </div>
-          <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed mb-4 font-medium">{item.summary}</p>
-          <div className="flex gap-2">
-            {item.proof && (
-              <a href={item.proof} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 bg-indigo-50 dark:bg-indigo-900/30 px-3 py-1.5 rounded-lg transition-colors hover:bg-indigo-100 border border-indigo-100 dark:border-indigo-800">
-                <Upload className="w-3 h-3" /> View Proof
-              </a>
+    <div className="relative pl-8 space-y-8 my-4 before:content-[''] before:absolute before:left-3.5 before:top-2 before:bottom-2 before:w-[2px] before:bg-slate-100 dark:before:bg-slate-700">
+      {history.map((item, idx) => {
+        const isAWS = item.course?.includes("AWS");
+        const isAI = item.course?.includes("AI") || item.course?.includes("Intelligence");
+
+        // Dynamic Icon Logic
+        const Icon = isAWS ? Cloud : isAI ? BrainCircuit : BookOpen;
+        // Note: Make sure Cloud/BrainCircuit are imported or use generic fallbacks if not. 
+        // fallback to standard icons available in imports: BookOpen, FileText, Globe
+
+        // [FIX] Group by Date ONLY (ignore time)
+        const getJustDate = (d) => {
+          if (!d) return "";
+          // Handle "•" separator from optimistic updates or legacy data
+          const cleanDate = d.includes("•") ? d.replace("•", "") : d;
+          const dateObj = new Date(cleanDate);
+          if (isNaN(dateObj.getTime())) return d; // Fallback to string if invalid
+          return dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        };
+        const dateStr = getJustDate(item.date);
+
+        // Check prior item for same date
+        const prevItem = history[idx - 1];
+        const prevDateStr = prevItem ? getJustDate(prevItem.date) : "";
+        const showHeader = dateStr !== prevDateStr;
+
+        return (
+          <div key={idx} className={`relative group animate-in slide-in-from-bottom-2 duration-500 ${!showHeader ? 'mt-2' : ''}`} style={{ animationDelay: `${idx * 100}ms` }}>
+            {/* Timeline Node */}
+            <div className={`absolute -left-[29px] top-0 w-8 h-8 rounded-full border-4 border-white dark:border-slate-800 flex items-center justify-center z-10 
+              ${isAWS ? 'bg-orange-100 text-orange-600' :
+                isAI ? 'bg-purple-100 text-purple-600' :
+                  'bg-blue-100 text-blue-600'}`}>
+              <FileText className="w-3.5 h-3.5" />
+            </div>
+
+            {/* Date Header: Show ONLY if new date */}
+            {showHeader && (
+              <div className="flex items-center gap-3 mb-4 mt-6 first:mt-0">
+                <span className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest bg-white dark:bg-slate-900 pr-3 z-10">
+                  {dateStr}
+                </span>
+                <div className="h-[1px] flex-grow bg-slate-100 dark:bg-slate-700"></div>
+              </div>
             )}
-            {item.file && (
-              <a href={item.file} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:text-emerald-800 bg-emerald-50 dark:bg-emerald-900/30 px-3 py-1.5 rounded-lg transition-colors hover:bg-emerald-100 border border-emerald-100 dark:border-emerald-800">
-                <Paperclip className="w-3 h-3" /> View Upload
-              </a>
-            )}
+
+            {/* If NOT showing header, show time inside card or above it? Let's keep card simple */}
+
+            {/* Card Content */}
+            <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 group-hover:shadow-md group-hover:border-slate-200 dark:group-hover:border-slate-600 transition-all">
+
+              {/* Course Badge */}
+              <div className="mb-3">
+                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wide
+                  ${isAWS ? "bg-orange-50 text-orange-700 border border-orange-100" :
+                    isAI ? "bg-purple-50 text-purple-700 border border-purple-100" :
+                      "bg-blue-50 text-blue-700 border border-blue-100"
+                  }`}>
+                  {item.course || "General Learning"}
+                </span>
+              </div>
+
+              <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed font-medium whitespace-pre-wrap">
+                {item.learning || item.summary}
+              </p>
+
+              {/* Attachments / Footer */}
+              {(item.proof || item.file || item.issues === "Yes") && (
+                <div className="mt-4 pt-3 border-t border-slate-50 dark:border-slate-700 flex flex-wrap gap-2">
+                  {item.issues === "Yes" && (
+                    <span className="inline-flex items-center gap-1 text-[10px] font-bold text-red-600 bg-red-50 px-2 py-1 rounded-md">
+                      <AlertTriangle className="w-3 h-3" /> Issue Reported
+                    </span>
+                  )}
+                  {item.proof && (
+                    <a href={item.proof} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-[10px] font-bold text-slate-500 hover:text-sky-600 transition-colors">
+                      <ExternalLink className="w-3 h-3" /> Proof
+                    </a>
+                  )}
+                  {item.file && (
+                    <a href={item.file} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-[10px] font-bold text-slate-500 hover:text-sky-600 transition-colors">
+                      <Paperclip className="w-3 h-3" /> File
+                    </a>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 };
@@ -1170,7 +1409,7 @@ const CategoryBadge = ({ category }) => {
   }[category] || "bg-slate-100 text-slate-700 border-slate-200";
 
   return (
-    <span className={`px-2.5 py-1 rounded-md text-[10px] font-extrabold uppercase tracking-wide border ${styles} shadow-sm`}>
+    <span className={`px-2.5 py-1 rounded-md text-[10px] font-extrabold uppercase tracking-wide border ${styles} shadow-sm dark:bg-opacity-20`}>
       {category}
     </span>
   );
@@ -1232,7 +1471,7 @@ const ProfileSection = ({ user, onBack, onUpdate, onUploadStatusChange }) => {
           setPhoto(pngBase64);
 
           // 3. Upload to Backend
-          const result = await api.saveProfile({ name: user.name, bio, photo: pngBase64 });
+          const result = await api.saveProfile({ name: user.name, internId: user.internId, bio, photo: pngBase64 });
 
           setPhotoStatus('idle');
           if (onUploadStatusChange) onUploadStatusChange(false); // Stop Navbar Loader
@@ -1261,7 +1500,7 @@ const ProfileSection = ({ user, onBack, onUpdate, onUploadStatusChange }) => {
     // Save to App State
     if (onUpdate) onUpdate({ bio });
     // Save to Backend
-    const result = await api.saveProfile({ name: user.name, bio, photo });
+    const result = await api.saveProfile({ name: user.name, internId: user.internId, bio, photo });
     if (result.success) {
       setSaveStatus('saved');
       setInitialBio(bio); // Reset initial state to current
@@ -1512,7 +1751,8 @@ const AdminDashboard = ({ user, onLogout }) => {
     setSelectedMember(member);
     setLoadingHistory(true);
     try {
-      const history = await fetchStudentHistory(member.name);
+      // [FIX] Pass the ADMIN's Intern ID to unlock the door
+      const history = await api.getHistory(member.name, user.internId);
       setMemberHistory(history);
     } catch (e) {
       console.error(e);
@@ -1530,13 +1770,37 @@ const AdminDashboard = ({ user, onLogout }) => {
       );
       setMembers(validMembers);
 
-      // Fetch Groups
+      // Fetch Groups & Calculate Status
       api.fetchGroups().then(gData => {
-        const sortedGroups = gData.map(g => ({
+        // 1. Calculate Statistics for Ranking
+        const scoredGroups = gData.map((g, i) => { // Capture Index 'i' for M-ID
+          // Map member names to User Objects to get stats
+          const groupStats = g.members.map(mStr => {
+            // Use our finding logic or direct match
+            return validMembers.find(u =>
+              normalize(u.name) === normalize(mStr) ||
+              normalize(u.name).includes(normalize(mStr))
+            );
+          }).filter(Boolean);
+
+          const totalDays = groupStats.reduce((sum, m) => sum + (m.daysCompleted || 0), 0);
+          const avgDays = groupStats.length > 0 ? (totalDays / groupStats.length) : 0;
+
+          // [FIX] Assign Persistent ID (M1, M2...) based on original column order
+          return { ...g, groupId: `M${i + 1}`, score: avgDays, memberObjects: groupStats };
+        });
+
+        // 2. Sort by Score (Desc)
+        scoredGroups.sort((a, b) => b.score - a.score);
+
+        // 3. Assign Ranks & Sort Members
+        const rankedGroups = scoredGroups.map((g, i) => ({
           ...g,
+          rank: i + 1,
           members: [...g.members].sort((a, b) => a.localeCompare(b))
         }));
-        setGroups(sortedGroups);
+
+        setGroups(rankedGroups);
       });
 
       setLoading(false);
@@ -1559,7 +1823,7 @@ const AdminDashboard = ({ user, onLogout }) => {
 
             <div className="flex items-center gap-6">
               {/* Navigation Links */}
-              <div className="hidden md:flex items-center gap-1 bg-slate-800/50 p-1 rounded-xl border border-slate-700">
+              <div className="flex items-center gap-1 bg-slate-800/50 p-1 rounded-xl border border-slate-700">
                 <button
                   onClick={() => { setView('overview'); setSelectedGroup(null); }}
                   className={`px-4 py-1.5 rounded-lg text-sm font-bold transition-all ${view === 'overview' ? 'bg-slate-700 text-white shadow-sm' : 'text-slate-400 hover:text-white'}`}
@@ -1630,18 +1894,37 @@ const AdminDashboard = ({ user, onLogout }) => {
                   {/* Card Header */}
                   <div className="bg-gradient-to-r from-slate-50 to-white px-6 py-4 border-b border-slate-100 flex justify-between items-center">
                     <div className="flex items-center gap-3">
-                      <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-md bg-gradient-to-br ${idx % 4 === 0 ? 'from-emerald-400 to-teal-500' :
-                        idx % 4 === 1 ? 'from-blue-400 to-indigo-500' :
-                          idx % 4 === 2 ? 'from-purple-400 to-fuchsia-500' :
-                            'from-orange-400 to-amber-500'
+                      <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-md relative ${group.rank === 1 ? 'bg-gradient-to-br from-yellow-300 to-amber-500 ring-2 ring-yellow-200' :
+                        group.rank === 2 ? 'bg-gradient-to-br from-slate-300 to-slate-500 ring-2 ring-slate-200' :
+                          group.rank === 3 ? 'bg-gradient-to-br from-orange-300 to-amber-700 ring-2 ring-orange-200' :
+                            `bg-gradient-to-br ${idx % 4 === 0 ? 'from-emerald-400 to-teal-500' : idx % 4 === 1 ? 'from-blue-400 to-indigo-500' : idx % 4 === 2 ? 'from-purple-400 to-fuchsia-500' : 'from-orange-400 to-amber-500'}`
                         }`}>
-                        M{idx + 1}
+                        {group.rank <= 3 ? (
+                          <Trophy className="w-6 h-6 text-white drop-shadow-sm" />
+                        ) : (
+                          // [FIX] Show PERSISTENT Group ID (M1, M5...) not Grid Index
+                          <span className="text-sm">{group.groupId || `M${idx + 1}`}</span>
+                        )}
+                        {/* Rank Badge */}
+                        <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-white text-slate-900 rounded-full flex items-center justify-center text-[10px] font-bold shadow-sm border border-slate-100">
+                          #{group.rank}
+                        </div>
                       </div>
-                      <h3 className="font-bold text-slate-800 text-sm line-clamp-1" title={group.monitor}>
-                        {group.monitor.split('–')[0].split('-')[0]}
-                      </h3>
+
+                      <div>
+                        <h3 className="font-bold text-slate-800 text-sm line-clamp-1 flex items-center gap-1">
+                          {group.monitor.split('–')[0].split('-')[0]}
+                        </h3>
+                        {/* Progress Bar Mini */}
+                        <div className="flex items-center gap-2 mt-1">
+                          <div className="w-16 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                            <div className="h-full bg-indigo-500 rounded-full" style={{ width: `${Math.min(group.score * 5, 100)}%` }}></div>
+                          </div>
+                          <span className="text-[10px] font-bold text-slate-400">Avg {group.score.toFixed(1)}d</span>
+                        </div>
+                      </div>
                     </div>
-                    <span className="px-2 py-1 bg-slate-100 text-slate-500 text-xs font-bold rounded-md border border-slate-200">{group.members.length}</span>
+                    <span className="px-2 py-1 bg-slate-100 text-slate-500 text-xs font-bold rounded-md border border-slate-200 h-fit self-start">{group.members.length}</span>
                   </div>
 
                   {/* List */}
@@ -1668,6 +1951,8 @@ const AdminDashboard = ({ user, onLogout }) => {
                 </div>
               ))}
             </div>
+
+
           </div>
         ) : (
           <>
@@ -1678,8 +1963,13 @@ const AdminDashboard = ({ user, onLogout }) => {
                   <ChevronRight className="w-5 h-5 rotate-180 text-slate-500" />
                 </button>
                 <div>
-                  <h2 className="text-2xl font-bold text-slate-900">{selectedGroup.monitor}</h2>
-                  <p className="text-slate-500 text-sm">Viewing {selectedGroup.members.length} members</p>
+                  <div className="flex items-center gap-3">
+                    <h2 className="text-2xl font-bold text-slate-900">{selectedGroup.monitor.split('–')[0].split('-')[0]}</h2>
+                    <span className="px-3 py-1 bg-yellow-400/10 text-yellow-600 border border-yellow-400/30 rounded-full text-xs font-bold flex items-center gap-1">
+                      <Trophy className="w-3 h-3" /> Rank #{selectedGroup.rank}
+                    </span>
+                  </div>
+                  <p className="text-slate-500 text-sm">Monitor Group • {selectedGroup.members.length} Members</p>
                 </div>
               </div>
             )}
@@ -1703,16 +1993,21 @@ const AdminDashboard = ({ user, onLogout }) => {
                   {selectedGroup
                     ? selectedGroup.members.filter(gm => {
                       const m = findUserForGroupMember(gm);
-                      return m && m.history.some(h => new Date(h.date).toDateString() === new Date().toDateString());
+                      // Check lastLogDate (YYYY-MM-DD from backend)
+                      if (!m || !m.lastLogDate) return false;
+                      return new Date(m.lastLogDate).toDateString() === new Date().toDateString();
                     }).length
-                    : members.filter(m => m.history.some(h => new Date(h.date).toDateString() === new Date().toDateString())).length}
+                    : members.filter(m => {
+                      if (!m.lastLogDate) return false;
+                      return new Date(m.lastLogDate).toDateString() === new Date().toDateString();
+                    }).length}
                 </h3>
               </div>
             </div>
 
             {/* Members Table */}
-            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-              <div className="px-6 py-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+              <div className="px-6 py-5 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/50">
                 <h3 className="text-lg font-bold text-slate-800">Member Progress</h3>
                 <div className="relative">
                   <Search className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
@@ -1721,7 +2016,7 @@ const AdminDashboard = ({ user, onLogout }) => {
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="Search members..."
-                    className="pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 outline-none w-64 transition-all"
+                    className="pl-9 pr-4 py-2 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 outline-none w-64 transition-all text-slate-900 dark:text-white placeholder:text-slate-400"
                   />
                 </div>
               </div>
@@ -1731,7 +2026,7 @@ const AdminDashboard = ({ user, onLogout }) => {
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-sm">
-                    <thead className="bg-slate-50/80 border-b border-slate-100/80 sticky top-0 backdrop-blur-sm">
+                    <thead className="bg-slate-50/80 dark:bg-slate-900/50 border-b border-slate-100/80 dark:border-slate-700/80 sticky top-0 backdrop-blur-sm">
                       <tr>
                         <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Name</th>
                         <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Intern ID</th>
@@ -1741,14 +2036,14 @@ const AdminDashboard = ({ user, onLogout }) => {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-50">
-                      {(selectedGroup ? selectedGroup.members : filteredMembers).length === 0 ? (
+                      {(selectedGroup ? [selectedGroup.monitor, ...selectedGroup.members] : filteredMembers).length === 0 ? (
                         <tr>
                           <td colSpan="5" className="px-6 py-12 text-center text-slate-400">
                             No members found.
                           </td>
                         </tr>
                       ) : (
-                        (selectedGroup ? selectedGroup.members : filteredMembers).map((item, idx) => {
+                        (selectedGroup ? [selectedGroup.monitor, ...selectedGroup.members] : filteredMembers).map((item, idx) => {
                           // LOGIC: If in Drill-down, 'item' is a String (Group Name). If Overview, 'item' is a User Object.
                           let displayMember = null;
                           let displayName = "";
@@ -1772,7 +2067,7 @@ const AdminDashboard = ({ user, onLogout }) => {
                           const m = displayMember || {};
 
                           return (
-                            <tr key={idx} className="group hover:bg-white hover:shadow-lg hover:shadow-slate-200/50 transition-all duration-300 border-b border-slate-50 last:border-0">
+                            <tr key={idx} className="group hover:bg-white dark:hover:bg-slate-700/50 hover:shadow-lg hover:shadow-slate-200/50 dark:hover:shadow-none transition-all duration-300 border-b border-slate-50 dark:border-slate-700 last:border-0 text-slate-600 dark:text-slate-300">
                               <td className="px-6 py-4 font-medium text-slate-900 flex items-center gap-4">
                                 <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-sm shadow-md bg-gradient-to-br overflow-hidden cursor-pointer ${m.photo ? 'bg-white' : (idx % 3 === 0 ? 'from-purple-500 to-indigo-500' :
                                   idx % 3 === 1 ? 'from-pink-500 to-rose-500' :
@@ -1790,14 +2085,22 @@ const AdminDashboard = ({ user, onLogout }) => {
                                   )}
                                 </div>
                                 <div>
-                                  <p className="font-bold text-slate-800" title={displayName}>{displayName}</p>
+                                  <p className="font-bold text-slate-800" title={displayName}>
+                                    {displayName}
+                                    {/* Monitor Badge */}
+                                    {isGroupRow && idx === 0 && (
+                                      <span className="ml-2 text-[10px] bg-purple-100 text-purple-600 px-1.5 py-0.5 rounded-full font-bold border border-purple-200">
+                                        MONITOR
+                                      </span>
+                                    )}
+                                  </p>
                                   <p className="text-[10px] text-slate-400 font-medium uppercase tracking-wide">
-                                    {isGroupRow ? 'Group Member' : 'Intern'}
+                                    {isGroupRow ? (idx === 0 ? 'Group Lead' : 'Group Member') : 'Intern'}
                                   </p>
                                 </div>
                               </td>
-                              <td className="px-6 py-4 font-bold text-slate-700 font-mono text-xs">
-                                {hasData ? m.internId : <span className="text-slate-300">-</span>}
+                              <td className="px-6 py-4 font-bold text-slate-700 dark:text-slate-300 font-mono text-xs">
+                                {hasData ? m.internId : <span className="text-slate-300 dark:text-slate-600">-</span>}
                               </td>
                               <td className="px-6 py-4">
                                 {hasData ? (
@@ -1880,15 +2183,15 @@ const AdminDashboard = ({ user, onLogout }) => {
                     {memberHistory.map((log, idx) => (
                       <div key={idx} className="p-6 bg-white hover:bg-slate-50 transition-colors">
                         <div className="flex justify-between items-start mb-2">
-                          <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wide border ${log.category === 'Learning' ? 'bg-blue-50 text-blue-600 border-blue-100' :
-                            log.category === 'Coding' ? 'bg-purple-50 text-purple-600 border-purple-100' :
+                          <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wide border ${(log.course || '').includes('Learning') ? 'bg-blue-50 text-blue-600 border-blue-100' :
+                            (log.course || '').includes('Coding') ? 'bg-purple-50 text-purple-600 border-purple-100' :
                               'bg-orange-50 text-orange-600 border-orange-100'
                             }`}>
-                            {log.category}
+                            {log.course || 'Log'}
                           </span>
                           <span className="text-xs font-medium text-slate-400">{formatDateForDisplay(log.date)}</span>
                         </div>
-                        <p className="text-slate-700 text-sm leading-relaxed mb-3">{log.summary}</p>
+                        <p className="text-slate-700 text-sm leading-relaxed mb-3">{log.learning}</p>
                         <div className="flex gap-2">
                           {log.proof && (
                             <a href={log.proof} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-50 text-slate-600 text-xs font-bold hover:bg-slate-100 border border-slate-200 transition-colors">
@@ -1933,37 +2236,8 @@ const AdminDashboard = ({ user, onLogout }) => {
 
 /* --- COURSES SECTION --- */
 
-const COURSES = [
-  {
-    id: 'basics1',
-    title: 'Computer Basics',
-    provider: 'GCFGlobal',
-    url: 'https://edu.gcfglobal.org/en/computerbasics/',
-    image: 'https://media.gcflearnfree.org/assets/models/computerbasics/topics/computerbasics_topic_01.jpg', // Placeholder logic in component if fail
-    color: 'blue'
-  },
-  {
-    id: 'basics2',
-    title: 'Professional Skills',
-    provider: 'IBM Skills',
-    url: 'https://skills.yourlearning.ibm.com/activity/PLAN-3E2A749669E2',
-    color: 'indigo'
-  },
-  {
-    id: 'aws',
-    title: 'Cloud Core',
-    provider: 'AWS Skill Builder',
-    url: 'https://skillbuilder.aws/learn/94T2BEN85A/aws-cloud-practitioner-essentials/8D79F3AVR7',
-    color: 'orange'
-  },
-  {
-    id: 'ai',
-    title: 'AI for Beginners',
-    provider: 'Microsoft',
-    url: 'https://github.com/microsoft/AI-For-Beginners',
-    color: 'rose'
-  }
-];
+// COURSES is now global
+
 
 // Refactored to use Props for State (Shared Source of Truth)
 const CoursesSection = ({ user, statuses, onUpdateStatus, onBack }) => {
@@ -2098,29 +2372,42 @@ const App = () => {
     localStorage.setItem('theme', theme);
   }, [theme]);
 
-  // Load Course Progress on User Load
+  // Load Course Progress on User Load (Cloud Sync)
   useEffect(() => {
     if (user && user.name) {
-      try {
-        const saved = localStorage.getItem(`courses_${user.name}`);
-        if (saved) {
-          setCourseProgress(JSON.parse(saved));
+      // 1. Try to load from Cloud
+      api.fetchCourseProgress(user.name).then(cloudProgress => {
+        // 2. Merge with Local if needed, but Cloud is source of truth
+        // For simple sync, let's just use cloud.
+        if (cloudProgress && Object.keys(cloudProgress).length > 0) {
+          setCourseProgress(cloudProgress);
+          // Also update local for backup/offline-first feel (optional)
+          localStorage.setItem(`courses_${user.name}`, JSON.stringify(cloudProgress));
+        } else {
+          // Fallback to local if cloud is empty (first time migration)
+          const saved = localStorage.getItem(`courses_${user.name}`);
+          if (saved) {
+            setCourseProgress(JSON.parse(saved));
+            // Migrating local to cloud
+            api.saveCourseProgress(user.name, JSON.parse(saved));
+          }
         }
-      } catch (e) { console.error("Failed to load courses", e); }
+      });
     }
   }, [user]);
 
   const updateCourseProgress = (courseId, status) => {
     setCourseProgress(prev => {
-      // Toggle logic: if clicking same status, clear it? Or just force set?
-      // User requested "synced". Let's assume force set unless user wants toggle.
-      // Actually, standard behavior for "Pursuing" button is often toggle if active.
-      // But let's stick to direct setter for reliability first.
-      const newStatus = status; // Logic handled in components if needed, or here.
-      // If we use 'status' arg, we just set it.
-
       const next = { ...prev, [courseId]: status };
+
+      // Update Local
       localStorage.setItem(`courses_${user?.name}`, JSON.stringify(next));
+
+      // Update Cloud (Background Sync)
+      if (user?.name) {
+        api.saveCourseProgress(user.name, user.internId, next);
+      }
+
       return next;
     });
   };

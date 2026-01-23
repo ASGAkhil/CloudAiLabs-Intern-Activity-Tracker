@@ -1,43 +1,31 @@
-# Work Log - 2026-01-09
+# Work Log - Jan 22, 2026
 
-## Summary of Today's Work
+## 🎯 Achievements Today
+### 1. Fixed "Active Days" Data Discrepancy
+- **Problem:** Users saw fewer "Active Days" (12) than manual logs (16) because dates were messy (mixed formats: `Jan 22`, `2026-01-22`, `1/22/2026`).
+- **Solution (Backend):** 
+  - Updated `getHistory` in `google_apps_script_code.js` to normalize ALL dates to `YYYY-MM-DD` (IST) using a robust `getCanonicalDateKey` function.
+  - moved `getCanonicalDateKey` to the global scope to prevent "0 Logs" crashes.
+- **Solution (Frontend):** 
+  - Simplified `App.jsx` to rely on `uniqueDates.size` using the clean string keys.
+  - Added a **Safety Fallback**: If a date is missing, the app now falls back to using the timestamp or index to ensure the day is counted (preventing "00 Days" errors).
 
-today we focused on significant enhancements to the "CloudAiLabs Intern Activity Tracker" application, ranging from core functionality fixes to a major UI overhaul.
+### 2. Improved "Recent Activity" UI
+- Redesigned the History feed to group logs by their formatted date.
+- Added a `TimelineThread` view for cleaner visual separation of days.
+- Fixed an issue where multiple logs on the same day caused UI clutter.
 
-### 1. Dark Mode Implementation
-- **Feature**: Implemented full Dark Mode compatibility.
-- **Details**:
-  - Added detecting of system color scheme preference on initial load.
-  - Created a manual toggle (Sun/Moon icon) for switching themes.
-  - Implemented `localStorage` persistence to remember the user's choice.
-  - Updated UI components (backgrounds, texts, borders, cards, inputs) with Tailwind `dark:` variants for a consistent look in both modes.
+### 3. Stability & Cleanup
+- Removed temporary `DateDebug` components from Dashboard and Login screens.
+- Fixed `ReferenceError` crashes caused by lingering debug calls.
+- Verified end-to-end flow with "Divya" user data.
 
-### 2. Monitor Drill-down Logic
-- **Fix**: Resolved issues with the Monitor card drill-down view.
-- **Details**:
-  - Ensured that clicking a monitor card filters and displays *only* the members of that specific group.
-  - Fixed logic to accurately calculate member counts and stats for the selected group.
-  - Improved name matching robustness to handle spacing or capitalization variations.
+## 📝 Next Steps (Tomorrow)
+- [ ] Monitor the dashboard for any new reports of incorrect counts.
+- [ ] Continue with any remaining UI polish or feature requests (e.g., Course Tracker enhancements if needed).
+- [ ] Verify that new photo uploads are syncing correctly with the new ID system.
 
-### 3. Drive Upload & Profile Persistence
-- **Fix**: Solved issues with Google Drive photo uploads and profile data.
-- **Details**:
-  - Fixed permission errors and ensured photos are stored as viewable Drive URLs (not Base64).
-  - Ensured correct data formatting and headers in the connected Google Sheets.
-  - Fixed the "Profile Section" crash caused by CORS errors.
-  - Implemented persistence for Profile Photo and "About Me" content across navigation.
-  - Added "Saved successfully" visual feedback.
-
-### 4. Application Logic Enhancements
-- **Feature**: Daily Log constraints and Certificate Eligibility.
-- **Details**:
-  - Enforced a limit of one daily log submission per day with a "Daily Log Complete" message.
-  - Fixed date comparison logic for the submission lock.
-  - Updated the "Certificate Eligibility" section to use a visually appealing rounded/circular progress bar.
-
-### 5. Design & Configuration
-- **Visuals**: Enhanced the overall application aesthetic.
-- **Details**:
-  - Integrated the company logo into the Login Screen (with animation) and Dashboard Navbar.
-  - Configured Tailwind CSS v4 correctly, resolving "Unknown at rule" warnings and build issues.
-  - Applied a premium, modern design approach with animations and glassmorphism effects.
+**Current State:** 
+- App is stable.
+- "Active Days" count is accurate (deduplicated by day).
+- Backend script is deployed and functional.
