@@ -103,7 +103,7 @@ const COURSES = [
 
 /* --- API HELPERS --- */
 
-export async function submitDailyLog(userName, formData) {
+async function submitDailyLog(userName, formData) {
   try {
     const result = await api.submitLog({
       name: userName,
@@ -125,11 +125,11 @@ export async function submitDailyLog(userName, formData) {
   }
 }
 
-export async function fetchStudentHistory(studentName, internId) {
+async function fetchStudentHistory(studentName, internId) {
   return await api.getHistory(studentName, internId);
 }
 
-export async function fetchAllMembers() {
+async function fetchAllMembers() {
   const users = await api.fetchUsers();
   // Add placeholder data for Admin UI compatibility
   return users.filter(u => u.role === 'user').map(u => ({
