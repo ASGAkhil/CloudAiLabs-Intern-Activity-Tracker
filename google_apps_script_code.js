@@ -56,8 +56,8 @@ function doPost(e) {
             return submitLog(data);
         } else if (action === "saveProfile") {
             return saveProfile(data);
-        } else if (action === "syncMonitorPermissions") {
-            return syncMonitorPermissions();
+            // } else if (action === "syncMonitorPermissions") {
+            //    return syncMonitorPermissions();
         } else if (action === "saveCourseProgress") {
             return saveCourseProgress(data);
         } else if (action === "sendInternId") { // [NEW] Secure ID Delivery
@@ -154,6 +154,8 @@ function saveCourseProgress(data) {
 
 // --- NEW: SMART SYNC (ROBUST SUBSET MATCHING) ---
 function syncMonitorPermissions() {
+    return ContentService.createTextOutput(JSON.stringify({ success: false, error: "Feature Disabled by Admin" })).setMimeType(ContentService.MimeType.JSON);
+    /*
     const sheetUsers = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_USERS);
     const sheetGroups = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_GROUPS);
 
@@ -292,6 +294,7 @@ function syncMonitorPermissions() {
         count: matchCountTotal,
         totalFound: allowedTokenSets.length
     })).setMimeType(ContentService.MimeType.JSON);
+    */
 }
 
 
@@ -352,10 +355,25 @@ function getUsers() {
         }
     }
 
-    // Get Users Data - Grab enough columns to cover the dynamic index
-    // We'll grab up to the monitor column or at least 4 cols
-    const numColsToGrab = Math.max(monitorColIndex + 1, 4);
-    const userData = sheetUsers.getRange(2, 1, sheetUsers.getLastRow() - 1, numColsToGrab).getValues();
+    // Find "Email" Column in Users Sheet
+    const userHeaders = sheetUsers.getRange(1, 1, 1, sheetUsers.getLastColumn()).getValues()[0];
+    let userEmailColIndex = -1;
+    for (let i = 0; i < userHeaders.length; i++) {
+        if (String(userHeaders[i]).toLowerCase().trim() === "email") {
+            userEmailColIndex = i;
+            break;
+        }
+    }
+
+    // Get Users Data - Grab ALL columns to ensure we get Email (simplest)
+    const userDataRaw = sheetUsers.getRange(2, 1, sheetUsers.getLastRow() - 1, sheetUsers.getLastColumn()).getValues();
+
+    // Create a lightweight lookup list with Email
+    const userLookup = userDataRaw.map(r => ({
+        name: r[0],
+        email: (userEmailColIndex > -1 && r[userEmailColIndex]) ? String(r[userEmailColIndex]).toLowerCase().trim() : "",
+        row: r
+    }));
 
     // Get Logs for aggregation
     const sheetLogs = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_LOGS);
@@ -363,82 +381,93 @@ function getUsers() {
 
     // --- AGGREGATION LOGIC ---
 
-    // 1. Process Legacy "Student Activity" (Schema: Col A=Name, Col B=Timestamp)
+    // 1. Process Legacy "Student Activity" (Schema: Col A=Name, Col B=Timestamp) - NO EMAIL
     const sheetLegacy = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Student Activity");
     if (sheetLegacy && sheetLegacy.getLastRow() >= 2) {
-        // [FIX] Use getValues to get Raw Date Objects (Consistent with getHistory)
-        const legData = sheetLegacy.getRange(2, 1, sheetLegacy.getLastRow() - 1, 2).getValues();
+        const legData = sheetLegacy.getRange(2, 1, sheetLegacy.getLastRow() - 1, 2).getDisplayValues();
         legData.forEach(row => {
             const name = row[0];
             const dateStr = row[1];
-            if (name && dateStr) processLogEntry(userData, userStats, name, dateStr);
+            // Legacy has no email, pass null
+            if (name && dateStr) processLogEntry(userLookup, userStats, name, null, dateStr);
         });
     }
 
-    // 2. Process "M1-M10" (Schema: Col A=Timestamp, Col C=Name)
+    // 2. Process "M1-M10" (Schema: Col A=Timestamp, Col B=Email, Col C=Name)
     const mSources = [];
     for (let i = 1; i <= 10; i++) mSources.push(`M${i}`);
 
     mSources.forEach(tabName => {
         const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(tabName);
         if (sheet && sheet.getLastRow() > 1) {
-            // Read Col A (Timestamp) and Col C (Name)
-            // [FIX] Use getValues for Raw Date Objects
-            const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 3).getValues();
+            // Read Col A(Date), B(Email), C(Name)
+            const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 3).getDisplayValues();
             data.forEach(row => {
                 const dateStr = row[0];
+                const email = row[1];
                 const name = row[2];
-                if (name && dateStr) processLogEntry(userData, userStats, name, dateStr);
+                if (dateStr) processLogEntry(userLookup, userStats, name, email, dateStr);
             });
         }
     });
 
-    // 3. Process "Activity Logs" (Schema: Col A=Name, Col B=Date)
+    // 3. Process "Activity Logs" (Schema: Col A=Name, Col B=Date, Col ... Email?)
+    // Activity Logs schema: Name(0), Date(1), Course(2), Summary(3), Proof(4), File(5), Duration(6). No Email explicitly stored in early versions?
+    // Wait, normalizeLog says: [timestamp, email, name...] for M-tabs.
+    // Let's check Activity Logs structure. It's usually: Name, Date, Category, Summary...
+    // The 'submitLog' function does NOT currently save Email to "Activity Logs" sheet. It only saves Name.
+    // So for Activity Logs, we must rely on Name.
     const actSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Activity Logs");
     if (actSheet && actSheet.getLastRow() > 1) {
-        // Read Col A (Name) and Col B (Date)
-        const data = actSheet.getRange(2, 1, actSheet.getLastRow() - 1, 2).getValues();
+        const data = actSheet.getRange(2, 1, actSheet.getLastRow() - 1, 2).getDisplayValues();
         data.forEach(row => {
             const name = row[0];
             const dateStr = row[1];
-            if (name && dateStr) processLogEntry(userData, userStats, name, dateStr);
+            if (name && dateStr) processLogEntry(userLookup, userStats, name, null, dateStr);
         });
     }
 
-    function processLogEntry(userList, statsMap, rawName, dateValue) {
+    function processLogEntry(userList, statsMap, rawName, rawEmail, dateValue) {
         if (!dateValue || dateValue === "") return;
 
-        // [FIX] ROBUST DATE KEY
         const dateKey = getCanonicalDateKey(dateValue);
-        if (!dateKey) return; // [FIX] Skip invalid dates entirely
+        if (!dateKey) return;
 
-        // Name Normalization (Strict Match)
-        // Check exact match first for speed
+        // CHECK 1: Email Match (Highest Priority)
+        if (rawEmail && String(rawEmail).includes("@")) {
+            const cleanEmail = String(rawEmail).toLowerCase().trim();
+            const emailMatch = userList.find(u => u.email === cleanEmail);
+            if (emailMatch) {
+                addToStats(statsMap, emailMatch.name, dateKey);
+                return;
+            }
+        }
+
+        // CHECK 2: Name Match (Fallback)
+        if (!rawName) return;
+
+        // Exact match optimization
         if (statsMap[rawName]) {
-            statsMap[rawName].add(dateKey);
+            addToStats(statsMap, rawName, dateKey);
             return;
         }
 
-        // Find Canonical User
-        const matchUser = userList.find(u => areNamesEquivalent(u[0], rawName));
+        // Fuzzy Match
+        const matchUser = userList.find(u => areNamesEquivalent(u.name, rawName));
         if (matchUser) {
-            const officialName = matchUser[0];
-            if (!statsMap[officialName]) statsMap[officialName] = new Set();
-            statsMap[officialName].add(dateKey);
-
-            // [NEW] Track Latest Date (Attach property to the Set object - a bit hacky but efficient JS)
-            if (!statsMap[officialName].latest || new Date(dateKey) > new Date(statsMap[officialName].latest)) {
-                statsMap[officialName].latest = dateKey;
-            }
+            addToStats(statsMap, matchUser.name, dateKey);
         } else {
             // Unrecognized user (add as is)
-            if (!statsMap[rawName]) statsMap[rawName] = new Set();
-            statsMap[rawName].add(dateKey);
+            addToStats(statsMap, rawName, dateKey);
+        }
+    }
 
-            // [NEW] Track Latest Date
-            if (!statsMap[rawName].latest || new Date(dateKey) > new Date(statsMap[rawName].latest)) {
-                statsMap[rawName].latest = dateKey;
-            }
+    function addToStats(map, officialName, dKey) {
+        if (!map[officialName]) map[officialName] = new Set();
+        map[officialName].add(dKey);
+        // Track Latest
+        if (!map[officialName].latest || new Date(dKey) > new Date(map[officialName].latest)) {
+            map[officialName].latest = dKey;
         }
     }
 
@@ -458,13 +487,14 @@ function getUsers() {
         }
     }
 
-    const users = userData.map(row => {
-        const name = row[0];
+    const users = userLookup.map(u => {
+        const name = u.name;
+        const row = u.row;
         const daysCount = userStats[name] ? userStats[name].size : 0;
         const photoUrl = userPhotos[name] || "";
 
-        // Robust Checkbox Check: Handles Boolean true, String "TRUE", "true"
-        const colVal = row[monitorColIndex];
+        // Robust Checkbox Check
+        const colVal = (monitorColIndex > -1) ? row[monitorColIndex] : false;
         const isMonitor = (colVal === true || String(colVal).toLowerCase() === "true");
 
         return {
@@ -473,10 +503,10 @@ function getUsers() {
             status: row[2],
             role: "user",
             daysCompleted: daysCount,
-            lastLogDate: userStats[name] && userStats[name].latest ? userStats[name].latest : "", // [NEW] For 'Active Today' count
+            lastLogDate: userStats[name] && userStats[name].latest ? userStats[name].latest : "",
             photo: photoUrl,
             isMonitor: isMonitor,
-            hasCourseAccess: isMonitor // [FIX] Monitor check now directly enables Course Access
+            hasCourseAccess: isMonitor
         };
     });
 
@@ -494,6 +524,7 @@ function getUsers() {
         .setMimeType(ContentService.MimeType.JSON);
 }
 
+// --- NEW: SECURE ID DELIVERY (EMAILS ID TO USER) ---
 // --- NEW: SECURE ID DELIVERY (EMAILS ID TO USER) ---
 function sendInternId(email) {
     if (!email || !email.includes("@")) return ContentService.createTextOutput(JSON.stringify({ error: "Invalid Email" })).setMimeType(ContentService.MimeType.JSON);
@@ -538,12 +569,63 @@ function sendInternId(email) {
         return ContentService.createTextOutput(JSON.stringify({ error: "Email not registered." })).setMimeType(ContentService.MimeType.JSON);
     }
 
-    // 3. Send Email
-    const subject = "Your CloudAiLabs Intern ID";
-    const body = `Hello ${foundUser.name},\n\nHere is your Intern ID for the Activity Tracker Dashboard:\n\n${foundUser.id}\n\nPlease keep this safe.\n\nBest,\nCloudAiLabs Team`;
+    // 3. Send Email (HTML Template)
+    const subject = "Your CloudAiLabs Intern ID 🆔";
+
+    // Banner ID from User (1doBwaupXjjT6UEL84AsXoYfGTLdxdTOp)
+    // Using thumbnail endpoint for reliable embedding without complex permissions sometimes
+    const bannerUrl = "https://drive.google.com/thumbnail?id=1doBwaupXjjT6UEL84AsXoYfGTLdxdTOp&sz=w1200";
+
+    const htmlBody = `
+    <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 16px; overflow: hidden;">
+        
+        <!-- HEADER / BANNER -->
+        <div style="background-color: #0f172a; text-align: center;">
+            <img src="${bannerUrl}" alt="CloudAiLabs Banner" style="width: 100%; height: auto; display: block; object-fit: cover;" />
+        </div>
+
+        <!-- BODY -->
+        <div style="padding: 40px 30px; background-color: #ffffff;">
+            <h2 style="color: #0f172a; margin-top: 0; font-size: 24px;">Hello ${foundUser.name},</h2>
+            <p style="color: #475569; font-size: 16px; line-height: 1.6;">
+                Welcome to the <strong>CloudAiLabs Internship Program</strong>. We are excited to have you on board!
+            </p>
+            <p style="color: #475569; font-size: 16px; line-height: 1.6;">
+                To access your daily activity tracker and dashboard, please use the secure Intern ID below. Do not share this ID with others.
+            </p>
+
+            <!-- ID CARD -->
+            <div style="background: linear-gradient(135deg, #0ea5e9 0%, #3b82f6 100%); margin: 30px 0; padding: 25px; border-radius: 12px; text-align: center; color: white; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
+                <p style="margin: 0; font-size: 12px; text-transform: uppercase; letter-spacing: 2px; opacity: 0.9;">Your Intern ID</p>
+                <h1 style="margin: 10px 0 0 0; font-size: 32px; letter-spacing: 2px; font-family: monospace; font-weight: 700;">${foundUser.id}</h1>
+            </div>
+
+            <p style="color: #475569; font-size: 14px; text-align: center;">
+                Use this ID to login at the dashboard portal.
+            </p>
+        </div>
+
+        <!-- FOOTER -->
+        <div style="background-color: #f1f5f9; padding: 20px; text-align: center; border-top: 1px solid #e2e8f0;">
+            <p style="margin: 0; font-size: 14px; font-weight: bold; color: #334155;">CloudAiLabs Team</p>
+            <p style="margin: 5px 0 0 0; font-size: 12px; color: #64748b;">Bridging Cloud Innovation and Career-Ready Talent</p>
+            <div style="margin-top: 15px;">
+                <a href="mailto:akhil@cloudailabs.in" style="color: #0ea5e9; text-decoration: none; font-size: 12px; margin: 0 10px;">Contact Support</a>
+                <a href="https://www.cloudailabs.in" style="color: #0ea5e9; text-decoration: none; font-size: 12px; margin: 0 10px;">Website</a>
+            </div>
+            <p style="margin-top: 20px; font-size: 10px; color: #94a3b8;">
+                © 2026 CloudAiLabs. All rights reserved.
+            </p>
+        </div>
+    </div>
+    `;
 
     try {
-        MailApp.sendEmail(inputEmail, subject, body);
+        MailApp.sendEmail({
+            to: inputEmail,
+            subject: subject,
+            htmlBody: htmlBody
+        });
         return ContentService.createTextOutput(JSON.stringify({ success: true, message: "ID sent to email." })).setMimeType(ContentService.MimeType.JSON);
     } catch (e) {
         return ContentService.createTextOutput(JSON.stringify({ error: "Email failed: " + e.message })).setMimeType(ContentService.MimeType.JSON);
@@ -685,6 +767,35 @@ function getHistory(name, internId) {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     let allLogs = [];
 
+    // 0. FETCH USER EMAIL (Robust Matching like getUsers)
+    const sheetUsers = ss.getSheetByName(SHEET_USERS);
+    let userEmail = "";
+    if (sheetUsers) {
+        // Find Email Column
+        const uHeaders = sheetUsers.getRange(1, 1, 1, sheetUsers.getLastColumn()).getValues()[0];
+        let uEmailCol = -1;
+        for (let i = 0; i < uHeaders.length; i++) {
+            if (String(uHeaders[i]).toLowerCase().trim() === "email") {
+                uEmailCol = i;
+                break;
+            }
+        }
+
+        if (uEmailCol > -1) {
+            // Find User Row
+            const uData = sheetUsers.getDataRange().getValues();
+            // Skip header
+            for (let i = 1; i < uData.length; i++) {
+                if (areNamesEquivalent(uData[i][0], name)) {
+                    if (uData[i][uEmailCol]) {
+                        userEmail = String(uData[i][uEmailCol]).toLowerCase().trim();
+                    }
+                    break;
+                }
+            }
+        }
+    }
+
     // 1. Scan M1 to M10
     // These are the "Read Only" tabs from the monitors
     for (let i = 1; i <= 10; i++) {
@@ -695,9 +806,13 @@ function getHistory(name, internId) {
             // Skip Header (Row 1)
             for (let r = 1; r < data.length; r++) {
                 const rowName = data[r][2]; // Col C is Name
+                const rowEmail = data[r][1] ? String(data[r][1]).toLowerCase().trim() : ""; // Col B is Email
 
-                // Strict Name Match
-                if (areNamesEquivalent(rowName, name)) {
+                // MATCH LOGIC: Name OR Email (Robust)
+                const isNameMatch = areNamesEquivalent(rowName, name);
+                const isEmailMatch = (userEmail !== "" && rowEmail === userEmail && rowEmail.includes("@"));
+
+                if (isNameMatch || isEmailMatch) {
                     const log = normalizeLog(data[r], `M${i}`);
 
                     // [FIX] Normalize Date for Frontend
@@ -715,7 +830,11 @@ function getHistory(name, internId) {
         }
     }
 
-    // 2. Scan Local 'Activity Logs'
+    // 2. Scan Legacy 'Student Activity' - REMOVED (Caused "Program Start" / "Year 202757" Bug)
+    // We strictly only show actual logs from M-tabs and Activity Logs now.
+
+
+    // 3. Scan Local 'Activity Logs'
     // This is where NEW logs come in from the Dashboard
     const actSheet = ss.getSheetByName("Activity Logs");
     if (actSheet && actSheet.getLastRow() > 1) {
@@ -727,6 +846,7 @@ function getHistory(name, internId) {
             const rowName = aDataRaw[r][0]; // Col A is Name
             const dateVal = aDataRaw[r][1]; // Col B is Date String
 
+            // For Activity Logs, we only have Name (no email stored currently).
             if (areNamesEquivalent(rowName, name)) {
                 const cDate = getCanonicalDateKey(dateVal);
                 const cTime = getTimeString(dateVal); // [NEW] Extract Time
@@ -749,7 +869,7 @@ function getHistory(name, internId) {
         }
     }
 
-    console.log(`[getHistory] Total Logs Found: ${allLogs.length}`);
+    console.log(`[getHistory] Total Logs Found OLD: ? -> NEW: ${allLogs.length}`);
 
     // Sort by Date (Desc - Newest First)
     allLogs.sort((a, b) => new Date(b.date) - new Date(a.date));
@@ -830,6 +950,7 @@ function getProfile(name) {
 // Matches "Test" with "Test User", but NOT with "Contest"
 // --- HELPER: STRICT TOKEN MATCHING (ROBUST FUZZY) ---
 // Matches "Mulkala Laxmanacharry" with "Mulkala Laxman" OR "Laxmanacharry Mulkala"
+// Matches "Mulkala Laxmanacharry" with "Mulkala Laxman" OR "Laxmanacharry Mulkala"
 function areNamesEquivalent(name1, name2) {
     if (!name1 || !name2) return false;
     const n1 = String(name1).toLowerCase().trim();
@@ -843,49 +964,38 @@ function areNamesEquivalent(name1, name2) {
     const clean1 = n1.replace(/[^a-z0-9\s]/g, "");
     const clean2 = n2.replace(/[^a-z0-9\s]/g, "");
 
-    const tokens1 = clean1.split(/\s+/).filter(t => t.length > 1); // Ignore single chars like initials for now unless necessary
+    const tokens1 = clean1.split(/\s+/).filter(t => t.length > 1);
     const tokens2 = clean2.split(/\s+/).filter(t => t.length > 1);
 
     if (tokens1.length === 0 || tokens2.length === 0) return false;
 
     // Count Matches
     let matchCount = 0;
-    let exactMatchCount = 0;
     const tokens2Set = new Set(tokens2);
 
-    // Check tokens from Name1 against Name2
     for (const t1 of tokens1) {
-        // Direct match
+        // Direct match ONLY (Strict Mode)
         if (tokens2Set.has(t1)) {
             matchCount++;
-            exactMatchCount++;
-            continue;
-        }
-        // Partial Sub-match (e.g. "Laxman" inside "Laxmanacharry")
-        // Only if token is significant length (>3)
-        if (t1.length > 3) {
-            for (const t2 of tokens2) {
-                if (t2.includes(t1) || t1.includes(t2)) {
-                    matchCount++;
-                    break;
-                }
-            }
         }
     }
+
+    const minLen = Math.min(tokens1.length, tokens2.length);
+    const maxLen = Math.max(tokens1.length, tokens2.length);
 
     // DECISION LOGIC
-    // 1. If we have 2 or more matching tokens, it's a very strong match (First + Last Name usually)
-    if (matchCount >= 2) return true;
 
-    // 2. If one name ONLY has 1 token and it matches (e.g. "Mulkala" vs "Mulkala")
-    // [FIX] Require EXACT match for single tokens to avoid "Kanishk" matching "Kanishka"
-    if (matchCount === 1 && (tokens1.length === 1 || tokens2.length === 1)) {
-        return exactMatchCount > 0;
+    // 1. Full Subset Match (e.g. "Shivam Kumar" inside "Shivam Kumar Jha")
+    if (matchCount === minLen) return true;
+
+    // 2. High Ratio Match for Longer Names
+    if (maxLen >= 3) {
+        if ((matchCount / maxLen) > 0.7) return true;
+        return false;
     }
 
-    // 3. High Ratio Match (e.g. 2 out of 3 tokens match)
-    const minLen = Math.min(tokens1.length, tokens2.length);
-    if (minLen > 0 && (matchCount / minLen) >= 0.6) return true;
+    // 3. Fallback for Short Names (len 2)
+    if (matchCount >= 2) return true;
 
     return false;
 }
@@ -971,14 +1081,13 @@ function submitLog(data) {
     const summary = data.summary || data.learning || "";
     const duration = data.time || ""; // [NEW] Capture Duration/Time Spent
 
+    // 1. Handle Issue File (Conditional)
     let fileUrl = "";
-
-    // Upload Logic for Daily Logs
     if (file && file.toString().includes("base64,")) {
         try {
             const mainFolder = DriveApp.getFolderById(DRIVE_FOLDER_ID);
             const subFolder = getOrCreateSubfolder(mainFolder, "Daily Tracker");
-            fileUrl = uploadToDriveFolder(subFolder, file, name + "_log_" + Date.now());
+            fileUrl = uploadToDriveFolder(subFolder, file, name + "_issue_" + Date.now());
         } catch (e) {
             fileUrl = "ERROR_UPLOADING: " + e.toString();
         }
@@ -986,8 +1095,22 @@ function submitLog(data) {
         fileUrl = file;
     }
 
+    // 2. Handle Proof File (Optional "Proof of Work")
+    let proofUrl = "";
+    if (proof && proof.toString().includes("base64,")) {
+        try {
+            const mainFolder = DriveApp.getFolderById(DRIVE_FOLDER_ID);
+            const subFolder = getOrCreateSubfolder(mainFolder, "Daily Tracker");
+            proofUrl = uploadToDriveFolder(subFolder, proof, name + "_proof_" + Date.now());
+        } catch (e) {
+            proofUrl = "ERROR_UPLOADING: " + e.toString();
+        }
+    } else if (proof) {
+        proofUrl = proof;
+    }
+
     // [UPDATE] Appended Duration at Index 6 (Col G)
-    sheet.appendRow([name, date, category, summary, proof, fileUrl, duration]);
+    sheet.appendRow([name, date, category, summary, proofUrl, fileUrl, duration]);
 
     return ContentService.createTextOutput(JSON.stringify({ success: true }))
         .setMimeType(ContentService.MimeType.JSON);
@@ -1105,53 +1228,105 @@ function debugSystem() {
     return result;
 }
 
-// --- DEBUGGING TOOL ---
-function debugSystem() {
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
+// --- NEW: SYNC EMAILS (M1-M10 -> Student Activity) ---
+function syncStudentEmails() {
+    const sheetUsers = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_USERS);
+    if (!sheetUsers) return "User Sheet Missing";
 
-    // 1. Check M1 Tab
-    const m1 = ss.getSheetByName("M1");
-    if (!m1) {
-        console.log("CRITICAL ERROR: Tab 'M1' is missing.");
-        return;
+    // 1. Build Map of { Name -> Email } from M1-M10
+    const nameEmailMap = {};
+    const mSources = [];
+    for (let i = 1; i <= 10; i++) mSources.push(`M${i}`);
+
+    mSources.forEach(tabName => {
+        const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(tabName);
+        if (sheet && sheet.getLastRow() > 1) {
+            // M-Schema: Col A (Time), Col B (Email), Col C (Name)
+            const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 3).getValues();
+            data.forEach(row => {
+                const email = row[1];
+                const name = row[2];
+                if (name && email && String(email).includes("@")) {
+                    // Prioritize latest? Or just overwrite.
+                    // Map keys should be "Clean Tokens" for robustness
+                    nameEmailMap[name.trim()] = email.trim();
+                }
+            });
+        }
+    });
+
+    // 2. Scan Main User Sheet
+    const dataRange = sheetUsers.getDataRange();
+    const data = dataRange.getValues();
+    const headers = data[0];
+
+    // Find "Email" Column
+    let emailColIndex = -1;
+    for (let i = 0; i < headers.length; i++) {
+        if (headers[i].toString().toLowerCase().trim() === "email") {
+            emailColIndex = i;
+            break;
+        }
     }
-    const rows = m1.getLastRow();
-    // Read first 3 rows to check specific columns
-    const data = m1.getRange(1, 1, Math.min(rows, 3), 10).getValues();
 
-    console.log(`[Diagnostic] M1 Tab Check: Found ${rows} rows.`);
-    console.log(`[Diagnostic] Row 1 (Header): ${JSON.stringify(data[0])}`);
-    if (data.length > 1) {
-        console.log(`[Diagnostic] Row 2 (Data):   ${JSON.stringify(data[1])}`);
-        console.log(`[Diagnostic] User in Row 2:  '${data[1][2]}'`); // Index 2 = Name
+    if (emailColIndex === -1) {
+        // Create Email Column if missing
+        emailColIndex = headers.length;
+        sheetUsers.getRange(1, emailColIndex + 1).setValue("Email").setFontWeight("bold");
     }
 
-    // 2. Test getHistory Logic Directly
-    const testUser = "Pranali Nikhil Solaskar"; // Taken from your previous debug log
-    console.log(`\n[Diagnostic] Testing getHistory('${testUser}')...`);
+    // 3. Update Emails
+    let updates = 0;
+    const updatesArray = []; // To batch update if needed, but row-by-row is safer for mixed data
 
-    try {
-        const responseEntry = getHistory(testUser);
-        const jsonString = responseEntry.getContent();
-        const parsed = JSON.parse(jsonString);
+    for (let i = 1; i < data.length; i++) {
+        const rowName = data[i][0];
+        const currentEmail = data[i][emailColIndex];
 
-        console.log(`[Diagnostic] Result Count: ${parsed.length}`);
+        // Only update if missing
+        if (!currentEmail || currentEmail === "") {
+            // MATCH LOGIC
+            let foundEmail = null;
 
-        if (parsed.length > 0) {
-            console.log("SUCCESS! Found logs. Sample:", parsed[0]);
-        } else {
-            console.log("FAILURE! Returned 0 logs. Checking Name Matching...");
-            // Debug the match specifically
-            if (data.length > 1) {
-                const sheetName = data[1][2];
-                const cleanSheet = String(sheetName).toLowerCase().trim();
-                const cleanTest = String(testUser).toLowerCase().trim();
-                console.log(`   Sheet Name Clean: '${cleanSheet}'`);
-                console.log(`   Test User Clean:  '${cleanTest}'`);
-                console.log(`   areNamesEquivalent: ${areNamesEquivalent(sheetName, testUser)}`);
+            // Strategy A: Exact Match
+            if (nameEmailMap[rowName]) {
+                foundEmail = nameEmailMap[rowName];
+            } else {
+                // Strategy B: Fuzzy/Token Match (Expensive O(N^2) but necessary)
+                // We iterate our Map Keys
+                const mapKeys = Object.keys(nameEmailMap);
+                for (const potentialName of mapKeys) {
+                    if (areNamesEquivalent(rowName, potentialName)) {
+                        foundEmail = nameEmailMap[potentialName];
+                        break;
+                    }
+                }
+            }
+
+            if (foundEmail) {
+                // Write to Sheet (1-indexed row = i+1, col = emailColIndex+1)
+                sheetUsers.getRange(i + 1, emailColIndex + 1).setValue(foundEmail);
+                updates++;
             }
         }
-    } catch (e) {
-        console.log("CRITICAL ERROR in getHistory execution: " + e.toString());
     }
+
+    return `Synced ${updates} emails successfully.`;
+}
+
+// --- DEBUGGING TOOL ---
+function debugSystem() {
+    console.log("[Diagnostic] Testing 'Shiva' vs 'Shivam'...");
+
+    // Hypothesis: "Shiva" (log name) matches "Shivam Kumar Jha" (user)
+    const logName = "Shiva";
+    const user1 = "Shivam Kumar Jha";
+    const user2 = "Shiva Rama Krishna Boga";
+
+    console.log(`'${logName}' vs '${user1}' => ${areNamesEquivalent(logName, user1)} (Expect FALSE)`);
+    console.log(`'${logName}' vs '${user2}' => ${areNamesEquivalent(logName, user2)} (Expect TRUE)`);
+
+    // Hypothesis 2: "Shivam" (log name) matches "Shiva Rama..."
+    const logName2 = "Shivam";
+    console.log(`'${logName2}' vs '${user2}' => ${areNamesEquivalent(logName2, user2)} (Expect FALSE)`);
 }

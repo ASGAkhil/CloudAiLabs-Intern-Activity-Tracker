@@ -114,8 +114,9 @@ export async function submitDailyLog(userName, formData) {
       time: formData.time,
       issues: formData.issues,
       summary: formData.learning, // Backend expects 'summary'
-      proof: '',
-      file: null
+      summary: formData.learning, // Backend expects 'summary'
+      proof: formData.proof || '', // [NEW] Pass Proof (Base64)
+      file: formData.file || null // [NEW] Pass File (Base64) for Issues
     });
     return result;
   } catch (e) {
@@ -1173,7 +1174,11 @@ const DailyLogForm = ({ user, onSuccess }) => {
     course: 'Computer Basics (GCF Global)',
     time: '',
     issues: 'No',
-    learning: ''
+    time: '',
+    issues: 'No',
+    learning: '',
+    proof: null, // [NEW] Proof File
+    issueFile: null // [NEW] Issue content
   });
   const [status, setStatus] = useState('idle');
 
@@ -1189,13 +1194,35 @@ const DailyLogForm = ({ user, onSuccess }) => {
       course: formData.course,
       time: formData.time,
       issues: formData.issues,
-      learning: formData.learning
+      issues: formData.issues,
+      learning: formData.learning,
+      proof: formData.proof ? "Uploading..." : "", // Optimistic placeholder
+      file: formData.issueFile ? "Uploading..." : null
     };
 
-    const result = await submitDailyLog(user.name, { ...formData, internId: user.internId });
+    // Helper: Convert to Base64
+    const toBase64 = file => new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = error => reject(error);
+    });
+
+    let proof64 = null;
+    let issue64 = null;
+
+    if (formData.proof) proof64 = await toBase64(formData.proof);
+    if (formData.issueFile) issue64 = await toBase64(formData.issueFile);
+
+    const result = await submitDailyLog(user.name, {
+      ...formData,
+      internId: user.internId,
+      proof: proof64,
+      file: issue64
+    });
     if (result.success) {
       setStatus('success');
-      setFormData({ course: 'Computer Basics (GCF Global)', time: '', issues: 'No', learning: '' });
+      setFormData({ course: 'Computer Basics (GCF Global)', time: '', issues: 'No', learning: '', proof: null, issueFile: null });
       if (onSuccess) onSuccess(newLog);
       setTimeout(() => setStatus('idle'), 3000);
     } else setStatus('error');
@@ -1262,6 +1289,55 @@ const DailyLogForm = ({ user, onSuccess }) => {
             <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Yes</span>
           </label>
         </div>
+      </div>
+
+      {/* [NEW] Conditional Issue Screenshot Upload */}
+      {formData.issues === 'Yes' && (
+        <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+          <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
+            Upload Screenshot of Issue / Source <span className="text-red-500">*</span>
+          </label>
+          <div className="relative group">
+            <input
+              type="file"
+              onChange={e => setFormData({ ...formData, issueFile: e.target.files[0] })}
+              className="block w-full text-sm text-slate-500
+                file:mr-4 file:py-2.5 file:px-4
+                file:rounded-xl file:border-0
+                file:text-xs file:font-semibold
+                file:bg-red-50 file:text-red-700
+                hover:file:bg-red-100
+                dark:file:bg-red-900/30 dark:file:text-red-400
+                cursor-pointer border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900"
+              accept="image/*"
+              required
+            />
+          </div>
+          <p className="text-[10px] text-slate-400 mt-1 ml-1">Attach a screenshot of the error or the problem area.</p>
+        </div>
+      )}
+
+      {/* [NEW] Optional Proof of Work */}
+      <div>
+        <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
+          Proof of Work <span className="text-slate-400 font-normal">(Optional)</span>
+        </label>
+        <div className="relative group">
+          <input
+            type="file"
+            onChange={e => setFormData({ ...formData, proof: e.target.files[0] })}
+            className="block w-full text-sm text-slate-500
+              file:mr-4 file:py-2.5 file:px-4
+              file:rounded-xl file:border-0
+              file:text-xs file:font-semibold
+              file:bg-sky-50 file:text-sky-700
+              hover:file:bg-sky-100
+              dark:file:bg-sky-900/30 dark:file:text-sky-400
+              cursor-pointer border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900"
+            accept="image/*,application/pdf"
+          />
+        </div>
+        <p className="text-[10px] text-slate-400 mt-1 ml-1">Upload a screenshot, certification, or badge showing your progress.</p>
       </div>
 
       {/* Learning Content */}
@@ -1720,31 +1796,26 @@ const AdminDashboard = ({ user, onLogout }) => {
     let match = members.find(m => normalize(m.name) === nGroup);
     if (match) return match;
 
-    // 2. Hyphen Split (Handle "Name - Location")
-    const simpleNameRaw = groupMemberStr.split('-')[0].trim();
-    const nSimple = normalize(simpleNameRaw);
-    match = members.find(m => normalize(m.name) === nSimple);
-    if (match) return match;
+    // 2. Separator Split (Handle "Name - Location", "Name_Location")
+    const separators = /[-_()]/;
+    const simpleNameRaw = groupMemberStr.split(separators)[0].trim();
+    if (simpleNameRaw && simpleNameRaw.length > 2) {
+      const nSimple = normalize(simpleNameRaw);
+      match = members.find(m => normalize(m.name) === nSimple);
+      if (match) return match;
 
-    // 3. Reverse Check: Does the User Sheet Name *contain* the Group Name?
-    // User: "Aman Kumar", Group: "Aman" -> Match!
-    match = members.find(m => normalize(m.name).includes(nSimple));
-    if (match) return match;
-
-    // 4. First Name Match (Aggressive Fallback)
-    // Group: "Karan Bhardwarj", User: "Karan Bhardwaj" -> Match on "Karan"
-    // Only do this if the first name is significant (e.g., > 3 chars) to avoid false positives with "Al" vs "Alex"
-    const firstName = simpleNameRaw.split(' ')[0].trim();
-    if (firstName.length >= 3) {
-      const nFirst = normalize(firstName);
-      // Find a user whose name starts with this first name
-      match = members.find(m => normalize(m.name).startsWith(nFirst));
+      // 3. StartsWith Check (Aggressive)
+      match = members.find(m => normalize(m.name).startsWith(nSimple));
       if (match) return match;
     }
 
+    // 4. Reverse Check: Does the User Sheet Name *contain* the Group Name?
+    const nSimple = normalize(simpleNameRaw); // Recalc if needed
+    match = members.find(m => normalize(m.name).includes(nSimple));
+    if (match) return match;
+
     // 5. Permutation Match (Handle "Doe John" vs "John Doe")
-    // Split both names into parts and check if they contain the same words
-    const groupParts = simpleNameRaw.toLowerCase().split(' ').filter(p => p.length > 2); // Ignore short words
+    const groupParts = simpleNameRaw.toLowerCase().split(' ').filter(p => p.length > 2);
     if (groupParts.length > 1) {
       match = members.find(m => {
         const userParts = m.name.toLowerCase().split(' ');
@@ -1777,51 +1848,68 @@ const AdminDashboard = ({ user, onLogout }) => {
     setLoadingHistory(false);
   };
 
-  useEffect(() => {
-    fetchAllMembers().then(data => {
-      // Filter out placeholder/header rows from the Sheet
-      const validMembers = data.filter(m =>
-        m.name &&
-        !m.name.includes("Student Name") &&
-        m.internId !== "Intern ID"
-      );
-      setMembers(validMembers);
+  /* --- NEW: Reusable Group Data Fetcher --- */
+  const fetchGroupsData = async () => {
+    // 1. Fetch Groups
+    const gData = await api.fetchGroups();
 
-      // Fetch Groups & Calculate Status
-      api.fetchGroups().then(gData => {
-        // 1. Calculate Statistics for Ranking
-        const scoredGroups = gData.map((g, i) => { // Capture Index 'i' for M-ID
-          // Map member names to User Objects to get stats
-          const groupStats = g.members.map(mStr => {
-            // Use our finding logic or direct match
-            return validMembers.find(u =>
-              normalize(u.name) === normalize(mStr) ||
-              normalize(u.name).includes(normalize(mStr))
-            );
-          }).filter(Boolean);
+    // 2. Fetch Members (to cross-reference names)
+    // We fetch members again to ensure we have the latest "Days Completed" stats
+    const mData = await fetchAllMembers();
+    const validMembers = mData.filter(m =>
+      m.name &&
+      !m.name.includes("Student Name") &&
+      m.internId !== "Intern ID"
+    );
+    setMembers(validMembers); // Update global members list
 
-          const totalDays = groupStats.reduce((sum, m) => sum + (m.daysCompleted || 0), 0);
-          const avgDays = groupStats.length > 0 ? (totalDays / groupStats.length) : 0;
+    // 3. Process & Rank Groups
+    const scoredGroups = gData.map((g, i) => {
+      // Map member names to User Objects to get stats
+      const groupStats = g.members.map(mStr => {
+        // [FIX] ROBUST MATCHING: Handle "Name - Location" format
+        const cleanMStr = normalize(mStr);
 
-          // [FIX] Assign Persistent ID (M1, M2...) based on original column order
-          return { ...g, groupId: `M${i + 1}`, score: avgDays, memberObjects: groupStats };
+        let match = validMembers.find(u => {
+          const cleanU = normalize(u.name);
+          return cleanU === cleanMStr || cleanU.includes(cleanMStr) || cleanMStr.includes(cleanU);
         });
 
-        // 2. Sort by Score (Desc)
-        scoredGroups.sort((a, b) => b.score - a.score);
+        if (!match) {
+          const separators = /[-_()]/;
+          const namePart = mStr.split(separators)[0].trim();
+          if (namePart.length > 2) {
+            const cleanNamePart = normalize(namePart);
+            match = validMembers.find(u => {
+              const cleanU = normalize(u.name);
+              return cleanU === cleanNamePart || cleanU.startsWith(cleanNamePart);
+            });
+          }
+        }
+        return match;
+      }).filter(Boolean);
 
-        // 3. Assign Ranks & Sort Members
-        const rankedGroups = scoredGroups.map((g, i) => ({
-          ...g,
-          rank: i + 1,
-          members: [...g.members].sort((a, b) => a.localeCompare(b))
-        }));
+      // Calculate Total Days (Sum)
+      const totalDays = groupStats.reduce((sum, m) => sum + (m.daysCompleted || 0), 0);
 
-        setGroups(rankedGroups);
-      });
-
-      setLoading(false);
+      return { ...g, groupId: g.groupId || `M${i + 1}`, score: totalDays, memberObjects: groupStats };
     });
+
+    // 4. Sort & Rank
+    scoredGroups.sort((a, b) => b.score - a.score);
+
+    const rankedGroups = scoredGroups.map((g, i) => ({
+      ...g,
+      rank: i + 1,
+      members: [...g.members].sort((a, b) => a.localeCompare(b))
+    }));
+
+    setGroups(rankedGroups);
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    fetchGroupsData();
   }, []);
 
   return (
@@ -1891,15 +1979,12 @@ const AdminDashboard = ({ user, onLogout }) => {
                     const originalText = btn.innerHTML;
                     btn.disabled = true;
                     btn.innerHTML = `<span class="animate-spin inline-block mr-2">⟳</span> Syncing...`;
-                    await api.syncMonitorPermissions();
-                    btn.innerHTML = `<span class="text-emerald-600">✔ Done</span>`;
+                    await fetchGroupsData();
+                    btn.innerHTML = `<span class="text-emerald-600">✔ Updated</span>`;
                     setTimeout(() => { btn.disabled = false; btn.innerHTML = originalText; }, 2000);
                   }}
                   className="px-4 py-2 bg-white border border-slate-200 text-slate-600 font-bold rounded-xl shadow-sm hover:bg-slate-50 transition-colors text-sm flex items-center gap-2"
                 >
-                  <Lock className="w-4 h-4" /> Sync Permissions
-                </button>
-                <button className="px-4 py-2 bg-white border border-slate-200 text-slate-600 font-bold rounded-xl shadow-sm hover:bg-slate-50 transition-colors text-sm flex items-center gap-2">
                   <RefreshCw className="w-4 h-4" /> Sync Groups
                 </button>
               </div>
@@ -1908,8 +1993,8 @@ const AdminDashboard = ({ user, onLogout }) => {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {groups.map((group, idx) => (
                 <div key={idx} onClick={() => setSelectedGroup(group)} className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group cursor-pointer relative ring-2 ring-transparent hover:ring-purple-500/20">
-                  {/* Card Header */}
-                  <div className="bg-gradient-to-r from-slate-50 to-white px-6 py-4 border-b border-slate-100 flex justify-between items-center">
+                  {/* Card Header with Total Days Badge */}
+                  <div className="bg-gradient-to-r from-slate-50 to-white px-6 py-4 border-b border-slate-100 flex justify-between items-center relative">
                     <div className="flex items-center gap-3">
                       <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-md relative ${group.rank === 1 ? 'bg-gradient-to-br from-yellow-300 to-amber-500 ring-2 ring-yellow-200' :
                         group.rank === 2 ? 'bg-gradient-to-br from-slate-300 to-slate-500 ring-2 ring-slate-200' :
@@ -1919,8 +2004,7 @@ const AdminDashboard = ({ user, onLogout }) => {
                         {group.rank <= 3 ? (
                           <Trophy className="w-6 h-6 text-white drop-shadow-sm" />
                         ) : (
-                          // [FIX] Show PERSISTENT Group ID (M1, M5...) not Grid Index
-                          <span className="text-sm">{group.groupId || `M${idx + 1}`}</span>
+                          <span className="text-sm">{group.groupId}</span>
                         )}
                         {/* Rank Badge */}
                         <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-white text-slate-900 rounded-full flex items-center justify-center text-[10px] font-bold shadow-sm border border-slate-100">
@@ -1932,15 +2016,16 @@ const AdminDashboard = ({ user, onLogout }) => {
                         <h3 className="font-bold text-slate-800 text-sm line-clamp-1 flex items-center gap-1">
                           {group.monitor.split('–')[0].split('-')[0]}
                         </h3>
-                        {/* Progress Bar Mini */}
-                        <div className="flex items-center gap-2 mt-1">
-                          <div className="w-16 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                            <div className="h-full bg-indigo-500 rounded-full" style={{ width: `${Math.min(group.score * 5, 100)}%` }}></div>
-                          </div>
-                          <span className="text-[10px] font-bold text-slate-400">Avg {group.score.toFixed(1)}d</span>
+                        {/* [FIX] BIG TOTAL DAYS DISPLAY */}
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          <span className="bg-slate-900 text-white text-[10px] font-bold px-1.5 py-0.5 rounded shadow-sm">
+                            {Math.round(group.score)} Days
+                          </span>
+                          <span className="text-[10px] text-slate-400 font-medium">Total Output</span>
                         </div>
                       </div>
                     </div>
+                    {/* Member Count */}
                     <span className="px-2 py-1 bg-slate-100 text-slate-500 text-xs font-bold rounded-md border border-slate-200 h-fit self-start">{group.members.length}</span>
                   </div>
 
@@ -2064,11 +2149,24 @@ const AdminDashboard = ({ user, onLogout }) => {
                           // LOGIC: If in Drill-down, 'item' is a String (Group Name). If Overview, 'item' is a User Object.
                           let displayMember = null;
                           let displayName = "";
-                          let isGroupRow = !!selectedGroup;
+                          const isGroupRow = !!selectedGroup;
 
                           if (isGroupRow) {
-                            displayName = item; // Show the full Group Sheet string
-                            displayMember = findUserForGroupMember(item); // Link to data
+                            // USE THE PRE-CALCULATED OBJECTS!
+                            // Note: 'item' here is the raw string from keys. 
+                            // But we want to iterate over the RICH OBJECTS we created in Step 1.
+
+                            // Wait, the map above iterates 'selectedGroup.members' (strings).
+                            // We should change the iteration source to 'selectedGroup.memberObjects'!
+                            // But wait, memberObjects excludes the Monitor if they aren't in the member list?
+                            // Usually the Monitor is listed in the members list too?
+                            // Let's check logic: groupStats = g.members.map(...)
+                            // So yes, memberObjects corresponds 1:1 to members (if found).
+
+                            // BETTER APPROACH:
+                            // Find the object corresponding to this string 'item'
+                            displayMember = findUserForGroupMember(item);
+                            displayName = item;
                           } else {
                             displayMember = item;
                             displayName = item.name;
