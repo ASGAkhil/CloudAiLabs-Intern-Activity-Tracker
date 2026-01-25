@@ -97,7 +97,8 @@ const COURSES = [
     provider: 'Microsoft',
     link: 'https://github.com/microsoft/AI-For-Beginners',
     url: 'https://github.com/microsoft/AI-For-Beginners',
-    color: 'rose'
+    color: 'rose',
+    guide: 'https://docs.google.com/document/d/1iokyFFtx1zXykOd-1TZRehl1lj29afvXUmNjkrpx01Q/edit?tab=t.0' // [NEW] Guide Link
   }
 ];
 
@@ -515,7 +516,7 @@ const LoginScreen = ({ onLogin, users, toggleTheme, theme }) => {
 };
 
 // --- NEW COMPONENT: COURSE TRACKER ---
-const CourseCard = ({ title, link, status, onToggle }) => {
+const CourseCard = ({ title, link, status, guide, onToggle }) => {
   // Status: 'not_started' | 'pursuing' | 'done'
   const isPursuing = status === 'pursuing';
   const isDone = status === 'done';
@@ -542,9 +543,16 @@ const CourseCard = ({ title, link, status, onToggle }) => {
           )}
         </div>
         <h4 className="font-bold text-slate-900 dark:text-white mb-1 line-clamp-2">{title}</h4>
-        <a href={link} target="_blank" rel="noreferrer" className="text-xs text-sky-600 hover:underline flex items-center gap-1 mb-4">
-          View Course <ExternalLink className="w-3 h-3" />
-        </a>
+        <div className="flex flex-col gap-2 mb-4">
+          <a href={link} target="_blank" rel="noreferrer" className="text-xs text-sky-600 hover:underline flex items-center gap-1">
+            View Course <ExternalLink className="w-3 h-3" />
+          </a>
+          {guide && (
+            <a href={guide} target="_blank" rel="noreferrer" className="text-xs font-bold text-indigo-600 hover:text-indigo-700 hover:underline flex items-center gap-1">
+              <BookOpen className="w-3 h-3" /> How to Start Guide
+            </a>
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-2 mt-auto">
@@ -2405,6 +2413,18 @@ const CoursesSection = ({ user, statuses, onUpdateStatus, onBack }) => {
                 <p className="text-sm text-slate-500 dark:text-slate-400 font-medium mb-6">Provided by {course.provider}</p>
 
                 <div className="mt-auto space-y-3">
+                  {/* [NEW] How to Start Guide Link */}
+                  {course.guide && (
+                    <a
+                      href={course.guide}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex items-center justify-center gap-2 w-full py-2 mb-2 rounded-xl bg-indigo-50 text-indigo-700 font-bold text-xs hover:bg-indigo-100 border border-indigo-100 transition-colors"
+                    >
+                      <BookOpen className="w-3.5 h-3.5" /> How to Start Guide
+                    </a>
+                  )}
+
                   <a
                     href={course.url}
                     target="_blank"
