@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Upload, CheckCircle2, Clock, LogOut, LayoutDashboard, History, FileText, ChevronRight, User, Briefcase, BarChart3, Search, Instagram, Linkedin, Paperclip, AlertTriangle, X, Camera, Lock, RefreshCw, Info, HelpCircle, Users, Eye, EyeOff, Moon, Sun, BookOpen, GraduationCap, ExternalLink, ArrowLeft, Trophy, Crown, Flame, Cloud, BrainCircuit } from 'lucide-react';
 import logo from './assets/logo.png';
+import SplashScreen from './SplashScreen'; // [NEW]
+import RocketLoader from './RocketLoader'; // [NEW]
 
 import { api } from './services/api';
 
@@ -97,7 +99,15 @@ const COURSES = [
     provider: 'Microsoft',
     link: 'https://github.com/microsoft/AI-For-Beginners',
     url: 'https://github.com/microsoft/AI-For-Beginners',
-    color: 'rose',
+    // Fix duplicate key warning for 'time' and 'issues'
+    // It seems I need to view the `resetForm` or initial state logic which is likely further down in the file.
+    // Based on the user Logs:
+    // 1248 |      time: '',
+    // 1249 |      issues: 'No',
+    // 1250 |      time: '',
+    // ...
+    // Since I can't see those lines in the previous `view_file` (which showed 100-899), I need to view the end of the file first.
+    // I will skip this chunk for now and view the file first.
     guide: 'https://docs.google.com/document/d/1iokyFFtx1zXykOd-1TZRehl1lj29afvXUmNjkrpx01Q/edit?tab=t.0' // [NEW] Guide Link
   }
 ];
@@ -114,7 +124,6 @@ async function submitDailyLog(userName, formData) {
       category: formData.course, // Backend expects 'category'
       time: formData.time,
       issues: formData.issues,
-      summary: formData.learning, // Backend expects 'summary'
       summary: formData.learning, // Backend expects 'summary'
       proof: formData.proof || '', // [NEW] Pass Proof (Base64)
       file: formData.file || null // [NEW] Pass File (Base64) for Issues
@@ -271,6 +280,22 @@ const LoginScreen = ({ onLogin, users, toggleTheme, theme }) => {
   const [forgotEmail, setForgotEmail] = useState('');
   const [forgotStatus, setForgotStatus] = useState({ type: '', msg: '' });
 
+  // [NEW] First Time User State
+  const [showFirstTimeHelp, setShowFirstTimeHelp] = useState(false);
+
+  useEffect(() => {
+    // Check if user has seen help before
+    const hasSeenHelp = localStorage.getItem('has_seen_first_time_help');
+    if (!hasSeenHelp) {
+      // Small delay to make it pop after initial render
+      const timer = setTimeout(() => {
+        setShowFirstTimeHelp(true);
+        localStorage.setItem('has_seen_first_time_help', 'true');
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, []);
+
   const filteredUsers = users.filter(u =>
     u.role !== 'admin' && u.name.toLowerCase().includes(name.toLowerCase())
   );
@@ -296,26 +321,72 @@ const LoginScreen = ({ onLogin, users, toggleTheme, theme }) => {
     }
   };
 
+  /* --- OPTIMIZED LOGIN HANDLER WITH NUCLEAR SAFETY NET --- */
   const handleLogin = async (e) => {
     e.preventDefault();
     if (!name || !internId) return;
     setLoading(true);
     setError('');
 
-    await new Promise(r => setTimeout(r, 600)); // Network simulation
+    // Phase 1: Verify Credentials
+    await new Promise(r => setTimeout(r, 600));
 
-    const user = users.find(u => u.name.toLowerCase() === name.toLowerCase() && u.internId === internId);
+    const basicUser = users.find(u => u.name.toLowerCase() === name.toLowerCase() && u.internId === internId);
 
-    if (user) {
-      setSuccess(true);
-      setTimeout(() => {
-        onLogin(user);
-      }, 1500); // 1.5s delay for feedback
+    if (basicUser) {
+      setSuccess(true); // Shows RocketLoader
+
+      // 🔴 NUCLEAR SAFETY VALVE: If *anything* hangs for > 9s, FORCE LOGIN
+      // This guarantees the user is NEVER stuck on the loading screen.
+      const safetyNet = setTimeout(() => {
+        console.warn("⚠️ Safety Net Triggered: Forcing Login");
+        onLogin({ ...basicUser, loginTimestamp: new Date().getTime() });
+      }, 9000);
+
+      try {
+        // Phase 3: Parallel Data Fetch + Animation Timer
+        // We race the Data Fetch (max 5s) against the Animation (min 7s)
+        const fetchPromise = Promise.all([
+          api.getProfile(basicUser.name).catch(() => ({})),
+          api.getHistory(basicUser.name, basicUser.internId).catch(() => [])
+        ]);
+
+        const animationPromise = new Promise(r => setTimeout(r, 7000)); // Fixed 7s for Split Phase
+
+        const data = await Promise.race([
+          fetchPromise,
+          new Promise(r => setTimeout(() => r([{}, []]), 5000)) // 5s Data Timeout
+        ]);
+
+        await animationPromise; // Ensure full 7s animation plays
+
+        const [profile, history] = data || [{}, []];
+
+        // Success! Clear safety net and login normally
+        clearTimeout(safetyNet);
+
+        onLogin({
+          ...basicUser,
+          ...profile,
+          loginTimestamp: new Date().getTime()
+        }, history);
+
+      } catch (err) {
+        console.error("Login Logic Crash:", err);
+        // Safety net will catch this, or we can force it here:
+        clearTimeout(safetyNet);
+        onLogin(basicUser);
+      }
+
     } else {
       setError("Invalid credentials or user not found.");
       setLoading(false);
     }
   };
+
+  if (success) {
+    return <RocketLoader />;
+  }
 
   return (
     <div className="min-h-screen flex flex-col justify-center items-center p-4 selection:bg-sky-100 selection:text-sky-900 overflow-hidden relative dark:bg-slate-900 transition-colors duration-300">
@@ -340,6 +411,55 @@ const LoginScreen = ({ onLogin, users, toggleTheme, theme }) => {
 
       <div className="w-full max-w-md bg-white/80 dark:bg-slate-800/80 backdrop-blur-xl rounded-3xl shadow-brand-glow border border-white/50 dark:border-slate-700 overflow-hidden transform transition-all hover:scale-[1.01] duration-500 relative z-10">
         <div className="p-10 text-center">
+          {/* [NEW] First Time User Help Popup */}
+          {showFirstTimeHelp && !showForgotId && (
+            <div className="absolute inset-0 z-50 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md flex flex-col justify-center px-8 animate-in fade-in zoom-in-95 duration-500">
+              <div className="absolute top-4 right-4">
+                <button
+                  type="button"
+                  onClick={() => setShowFirstTimeHelp(false)}
+                  className="p-2 bg-slate-100 dark:bg-slate-800 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700 transition"
+                >
+                  <X size={20} className="text-slate-500 dark:text-slate-400" />
+                </button>
+              </div>
+
+              <div className="text-center mb-6">
+                {/* [CHANGED] Replaced Icon with Floating Logo */}
+                <div className="w-28 h-28 bg-white dark:bg-slate-700 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-xl shadow-sky-100 dark:shadow-none ring-1 ring-slate-100 dark:ring-slate-600 p-5 animate-float">
+                  <img src={logo} alt="CloudAiLabs Logo" className="w-full h-full object-contain drop-shadow-md" />
+                </div>
+
+                <h3 className="text-2xl font-bold text-slate-900 dark:text-white">Welcome, Intern! 👋</h3>
+                <p className="text-sm text-slate-500 dark:text-slate-400 max-w-xs mx-auto mt-3 leading-relaxed">
+                  To access your dashboard, you'll need your unique
+                  <span className="font-bold text-slate-800 dark:text-slate-200"> Intern ID</span>.
+                  <br />This acts as your password.
+                </p>
+              </div>
+
+              <div className="space-y-3">
+                <button
+                  onClick={() => {
+                    setShowFirstTimeHelp(false);
+                    setShowForgotId(true);
+                  }}
+                  className="w-full bg-sky-500 hover:bg-sky-600 text-white font-bold py-3.5 rounded-xl transition-all shadow-lg shadow-sky-500/20 flex items-center justify-center gap-2 group"
+                >
+                  Get my Intern ID
+                  <ArrowLeft className="w-4 h-4 rotate-180 group-hover:translate-x-1 transition-transform" />
+                </button>
+
+                <button
+                  onClick={() => setShowFirstTimeHelp(false)}
+                  className="w-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 font-semibold py-3.5 rounded-xl transition-all"
+                >
+                  I already have it
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* [NEW] Forgot ID MODAL OVERLAY */}
           {showForgotId && (
             <div className="absolute inset-0 z-50 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md flex flex-col justify-center px-8 animate-in fade-in zoom-in-95 duration-300">
@@ -638,11 +758,20 @@ const CourseTracker = ({ user, progress, onUpdateStatus, onViewCourses }) => {
 };
 
 const Dashboard = ({ user, onLogout, onUpdateProfile, toggleTheme, theme, courseProgress, onUpdateCourseProgress }) => {
-  const [history, setHistory] = useState([]);
+  // [FIX] Initialize with pre-fetched data from Login Phase
+  const [history, setHistory] = useState(() => {
+    if (typeof window !== 'undefined' && window.__PRELOADED_HISTORY__) {
+      const data = window.__PRELOADED_HISTORY__;
+      window.__PRELOADED_HISTORY__ = null; // Clear it
+      return data;
+    }
+    return [];
+  });
   const [view, setView] = useState('dashboard'); // 'dashboard' | 'profile'
 
   /* --- NEW: Loading & Refresh State --- */
-  const [initialLoading, setInitialLoading] = useState(true);
+  // If we have history, we are NOT loading.
+  const [initialLoading, setInitialLoading] = useState(() => history.length === 0);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isPhotoUploading, setIsPhotoUploading] = useState(false); // NEW: Lifted state to show in Navbar
 
@@ -746,12 +875,11 @@ const Dashboard = ({ user, onLogout, onUpdateProfile, toggleTheme, theme, course
 
 
   useEffect(() => {
-    // Initial fetch
-    if (user.name && user.internId) {
+    // Initial fetch - ONLY if we don't have data yet
+    if (user.name && user.internId && history.length === 0) {
       fetchStudentHistory(user.name, user.internId).then(data => {
         setHistory(data);
-        // Artificial delay for premium feel
-        setTimeout(() => setInitialLoading(false), 2000);
+        setInitialLoading(false);
       });
     }
   }, [user.name, user.internId]);
@@ -779,6 +907,91 @@ const Dashboard = ({ user, onLogout, onUpdateProfile, toggleTheme, theme, course
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 font-sans text-slate-900 dark:text-slate-100 pb-12 selection:bg-indigo-100 selection:text-indigo-900 flex flex-col transition-colors duration-300">
+      {/* --- MOVED & ENHANCED: Full Screen Dashboard Loader --- */}
+      {initialLoading && (
+        <div className="fixed inset-0 z-[1000] bg-slate-950 flex flex-col items-center justify-center animate-out fade-out duration-700 pointer-events-none">
+
+          {/* Background Stars (Copied from RocketLoader) */}
+          <div className="absolute inset-0 overflow-hidden pointer-events-none">
+            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-slate-800 via-slate-950 to-black opacity-80"></div>
+            {[...Array(20)].map((_, i) => (
+              <div
+                key={i}
+                className="absolute bg-white/30 rounded-full w-[1px] md:w-0.5"
+                style={{
+                  height: `${Math.random() * 80 + 20}px`,
+                  left: `${Math.random() * 100}%`,
+                  top: '-100px',
+                  animation: `rain 0.8s linear infinite`,
+                  animationDelay: `${Math.random() * 2}s`,
+                  opacity: Math.random() * 0.4 + 0.1
+                }}
+              />
+            ))}
+          </div>
+
+          {/* Glass Card Container */}
+          <div className="w-full max-w-sm bg-slate-900/60 backdrop-blur-3xl border border-white/5 rounded-[2rem] p-10 shadow-2xl shadow-sky-900/20 relative overflow-hidden flex flex-col items-center z-10 ring-1 ring-white/10">
+
+            {/* Tech Corner Accents */}
+            <div className="absolute top-0 left-0 w-20 h-20 border-t-2 border-l-2 border-sky-500/30 rounded-tl-[2rem]"></div>
+            <div className="absolute bottom-0 right-0 w-20 h-20 border-b-2 border-r-2 border-indigo-500/30 rounded-br-[2rem]"></div>
+
+            {/* Ambient Glow */}
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-56 h-56 bg-sky-500/10 rounded-full blur-[100px]"></div>
+
+            {/* Logo Area with Spinning Ring */}
+            <div className="relative mb-10 z-10 group-hover:scale-105 transition-transform duration-700">
+              {/* Spinning Gradient Ring */}
+              <div className="absolute -inset-1 bg-gradient-to-r from-sky-400 via-purple-500 to-sky-400 rounded-full blur opacity-40 animate-[spin_4s_linear_infinite]"></div>
+
+              {/* Logo Container */}
+              <div className="w-24 h-24 bg-slate-900 rounded-2xl flex items-center justify-center relative ring-1 ring-white/10 shadow-2xl overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent"></div>
+                <img src={logo} alt="CloudAiLabs" className="w-14 h-14 object-contain drop-shadow-[0_0_15px_rgba(14,165,233,0.3)]" />
+                {/* Inner shine */}
+                <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/5 to-transparent skew-x-12 opacity-50"></div>
+              </div>
+
+              {/* Verified Badge */}
+              <div className="absolute -bottom-2 -right-2 bg-slate-900 rounded-full p-1.5 border border-slate-700 shadow-sm flex items-center justify-center">
+                <div className="bg-emerald-500 rounded-full p-0.5">
+                  <CheckCircle2 size={12} strokeWidth={3} className="text-white" />
+                </div>
+              </div>
+            </div>
+
+            <h2 className="text-3xl font-black text-white tracking-tighter text-center mb-2 z-10">
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-sky-400 via-blue-400 to-indigo-400">Cloud</span>
+              <span className="text-slate-200">AiLabs</span>
+            </h2>
+
+            <div className="flex items-center gap-2 text-[10px] font-bold tracking-[0.2em] uppercase text-slate-500 bg-slate-800/50 px-3 py-1 rounded-full border border-white/5 z-10 mb-6">
+              <Lock size={10} className="text-sky-400" />
+              Secure Environment
+            </div>
+
+            <div className="flex items-center gap-2 mb-2 z-10">
+              <RefreshCw className="w-4 h-4 text-sky-400 animate-spin" />
+              <span className="text-sm font-semibold text-slate-300">Restoring Session...</span>
+            </div>
+
+            {/* Progress Bar Container */}
+            <div className="w-full h-1.5 bg-slate-800/50 rounded-full overflow-hidden relative shadow-inner backdrop-blur-sm border border-white/5 z-10">
+              <div className="absolute inset-0 bg-gradient-to-r from-sky-400 via-indigo-500 to-purple-500 w-1/2 animate-[shimmer_1s_infinite] shadow-[0_0_15px_rgba(14,165,233,0.5)]"></div>
+            </div>
+
+            <div className="mt-6 flex justify-between w-full text-[10px] font-medium text-slate-600 uppercase tracking-widest z-10">
+              <span>v2.4.0</span>
+              <div className="flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                Connected
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Navbar */}
       <nav className="bg-white/80 dark:bg-slate-900/80 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-30 backdrop-blur-xl supports-[backdrop-filter]:bg-white/60 dark:supports-[backdrop-filter]:bg-slate-900/60">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -859,19 +1072,7 @@ const Dashboard = ({ user, onLogout, onUpdateProfile, toggleTheme, theme, course
           </SectionErrorBoundary>
         ) : (
           <>
-            {/* --- NEW: Premium Welcome Loading Screen --- */
-              initialLoading && (
-                <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl animate-out fade-out duration-700 pointer-events-none">
-                  <div className="relative">
-                    <div className="w-24 h-24 rounded-full border-4 border-slate-100 dark:border-slate-800 border-t-sky-500 animate-spin"></div>
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <img src={logo} alt="Loading" className="w-10 h-10 object-contain opacity-50 animate-pulse" />
-                    </div>
-                  </div>
-                  <h2 className="mt-8 text-xl font-bold text-slate-800 dark:text-white tracking-tight animate-pulse">Loading your progress...</h2>
-                  <p className="text-slate-400 text-sm font-medium mt-2">Connecting to CloudAiLabs Database</p>
-                </div>
-              )}
+            {/* MOVED LOADER TO TOP LEVEL */}
 
             {/* Welcome & Stats */}
             <div className="animate-in fade-in slide-in-from-bottom-4 duration-700 ease-out">
@@ -1181,9 +1382,7 @@ const DailyLogForm = ({ user, onSuccess }) => {
   const [formData, setFormData] = useState({
     course: 'Computer Basics (GCF Global)',
     time: '',
-    issues: 'No',
-    time: '',
-    issues: 'No',
+    issues: 'No', // Fixed duplicates
     learning: '',
     proof: null, // [NEW] Proof File
     issueFile: null // [NEW] Issue content
@@ -1201,7 +1400,6 @@ const DailyLogForm = ({ user, onSuccess }) => {
       date: getFormattedDateTime(),
       course: formData.course,
       time: formData.time,
-      issues: formData.issues,
       issues: formData.issues,
       learning: formData.learning,
       proof: formData.proof ? "Uploading..." : "", // Optimistic placeholder
@@ -2490,6 +2688,7 @@ const App = () => {
   const [user, setUser] = useState(null);
   const [dbUsers, setDbUsers] = useState([]);
   const [loadingUsers, setLoadingUsers] = useState(true);
+  const [splashComplete, setSplashComplete] = useState(false); // [NEW] Splash State
 
   // --- DARK MODE LOGIC ---
   const [theme, setTheme] = useState(() => {
@@ -2630,17 +2829,14 @@ const App = () => {
       .catch(() => setLoadingUsers(false));
   }, []);
 
-  const handleLogin = (userData) => {
-    // Fetch profile on login
-    api.getProfile(userData.name).then(p => {
-      const fullUser = {
-        ...userData,
-        ...p,
-        loginTimestamp: new Date().getTime() // Store Login Time
-      };
-      setUser(fullUser);
-      localStorage.setItem('intern_user', JSON.stringify(fullUser));
-    });
+  const handleLogin = (fullUser, initialHistory = null) => {
+    // Data is already pre-fetched by LoginScreen during the rocket animation!
+    setUser(fullUser);
+    if (initialHistory) {
+      // Temporary storage to pass to Dashboard
+      window.__PRELOADED_HISTORY__ = initialHistory;
+    }
+    localStorage.setItem('intern_user', JSON.stringify(fullUser));
   };
 
   const updateProfile = (newData, saveToStorage = true) => {
@@ -2662,24 +2858,35 @@ const App = () => {
 
   return (
     <GlobalErrorBoundary>
-      {user ? (
-        user.role === 'admin' ? (
-          <AdminDashboard user={user} onLogout={handleLogout} toggleTheme={toggleTheme} theme={theme} />
+      {/* [NEW] Splash Screen Logic */}
+      {/* We show Splash if: We haven't finished the animation OR Data is still loading */}
+      {/* But to prevent flickering, we essentially show Splash ON TOP until it tells us it's done. */}
+      {(!splashComplete || loadingUsers) && (
+        <SplashScreen
+          dataReady={!loadingUsers}
+          onFinish={() => setSplashComplete(true)}
+        />
+      )}
+
+      {/* Main App Content - Hidden or Behind Splash until ready */}
+      {splashComplete && (
+        user ? (
+          user.role === 'admin' ? (
+            <AdminDashboard user={user} onLogout={handleLogout} toggleTheme={toggleTheme} theme={theme} />
+          ) : (
+            <Dashboard
+              user={user}
+              onLogout={handleLogout}
+              onUpdateProfile={updateProfile}
+              toggleTheme={toggleTheme}
+              theme={theme}
+              courseProgress={courseProgress}
+              onUpdateCourseProgress={updateCourseProgress}
+            />
+          )
         ) : (
-          <Dashboard
-            user={user}
-            onLogout={handleLogout}
-            onUpdateProfile={updateProfile}
-            toggleTheme={toggleTheme}
-            theme={theme}
-            courseProgress={courseProgress}
-            onUpdateCourseProgress={updateCourseProgress}
-          />
+          <LoginScreen onLogin={handleLogin} users={dbUsers} toggleTheme={toggleTheme} theme={theme} />
         )
-      ) : loadingUsers ? (
-        <div className="min-h-screen flex items-center justify-center font-bold text-slate-500 dark:bg-slate-900 dark:text-slate-400">Loading Intern Portal...</div>
-      ) : (
-        <LoginScreen onLogin={handleLogin} users={dbUsers} toggleTheme={toggleTheme} theme={theme} />
       )}
     </GlobalErrorBoundary>
   );
