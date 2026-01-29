@@ -679,7 +679,7 @@ const CourseCard = ({ title, link, status, guide, onToggle }) => {
         <button
           onClick={() => onToggle('pursuing')}
           disabled={isDone} // Can't go back to pursuing if done? User might want to. Let's allow switching.
-          className={`py-2 rounded-lg text-xs font-bold transition-all border ${isPursuing
+          className={`py-3 rounded-xl text-xs font-bold transition-all border ${isPursuing
             ? 'bg-amber-50 text-amber-700 border-amber-200 ring-2 ring-amber-100'
             : 'bg-white text-slate-600 border-slate-200 hover:bg-amber-50 hover:text-amber-600'
             }`}
@@ -688,7 +688,7 @@ const CourseCard = ({ title, link, status, guide, onToggle }) => {
         </button>
         <button
           onClick={() => onToggle('done')}
-          className={`py-2 rounded-lg text-xs font-bold transition-all border ${isDone
+          className={`py-3 rounded-xl text-xs font-bold transition-all border ${isDone
             ? 'bg-emerald-50 text-emerald-700 border-emerald-200 ring-2 ring-emerald-100'
             : 'bg-white text-slate-600 border-slate-200 hover:bg-emerald-50 hover:text-emerald-600'
             }`}
@@ -721,7 +721,7 @@ const CourseTracker = ({ user, progress, onUpdateStatus, onViewCourses }) => {
     <div className="mb-8 animate-in fade-in slide-in-from-bottom-5 duration-700">
       <div className="flex justify-between items-end mb-4">
         <div className="flex-grow">
-          <h2 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
+          <h2 className="text-xl md:text-2xl font-bold text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
             <GraduationCap className="w-6 h-6 text-indigo-600" /> Recommended Courses
           </h2>
           <p className="text-sm font-medium text-slate-500 dark:text-slate-400"> curated for Monitor Group Interns</p>
@@ -999,8 +999,8 @@ const Dashboard = ({ user, onLogout, onUpdateProfile, toggleTheme, theme, course
             <div className="flex items-center gap-3">
               <img src={logo} alt="Logo" className="w-9 h-9 object-contain drop-shadow-sm" />
               <div>
-                <h1 className="text-xl font-bold text-slate-900 dark:text-white leading-none tracking-tight">CloudAiLabs</h1>
-                <p className="text-xs text-sky-500 font-semibold mt-0.5 tracking-wide uppercase">Activity Tracker</p>
+                <h1 className="text-lg md:text-xl font-bold text-slate-900 dark:text-white leading-none tracking-tight">CloudAiLabs</h1>
+                <p className="text-[10px] md:text-xs text-sky-500 font-semibold mt-0.5 tracking-wide uppercase">Activity Tracker</p>
               </div>
             </div>
 
@@ -1078,11 +1078,11 @@ const Dashboard = ({ user, onLogout, onUpdateProfile, toggleTheme, theme, course
             <div className="animate-in fade-in slide-in-from-bottom-4 duration-700 ease-out">
 
               {/* Main Greeting Block */}
-              <div className="mb-8">
-                <h1 className="text-3xl font-bold text-slate-900 dark:text-white bg-clip-text text-transparent bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-300 mb-2">
+              <div className="mb-6 md:mb-8">
+                <h1 className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white bg-clip-text text-transparent bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-300 mb-2">
                   {getTimeBasedGreeting(user.name)}
                 </h1>
-                <p className="text-slate-500 dark:text-slate-400 font-medium text-lg">{greetingSubtitle}</p>
+                <p className="text-slate-500 dark:text-slate-400 font-medium text-base md:text-lg">{greetingSubtitle}</p>
               </div>
 
               <div className="flex justify-between items-end mb-6">
@@ -1258,14 +1258,14 @@ const Dashboard = ({ user, onLogout, onUpdateProfile, toggleTheme, theme, course
 
       {/* Footer */}
       <footer className="bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 mt-auto">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
+        <div className="max-w-7xl mx-auto px-6 md:px-8 py-6 md:py-12">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-12 text-center md:text-left">
             <div>
               <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4">Cloud AI Labs</h3>
               <p className="text-slate-500 dark:text-slate-400 text-sm leading-relaxed mb-6">
                 Cloud-native IT consulting and education NGO with a PAN-India presence, specializing in Cloud Pre-Sales, Project Delivery, and AI-driven solutions.
               </p>
-              <div className="flex gap-3">
+              <div className="flex gap-3 justify-center md:justify-start">
                 <a href="https://www.linkedin.com/in/akhil-singh-gautam/" target="_blank" rel="noreferrer" className="w-8 h-8 bg-sky-100 rounded-full flex items-center justify-center text-sky-600 hover:bg-sky-200 transition-colors"><Linkedin className="w-4 h-4" /></a>
                 <a href="https://www.instagram.com/cloudailabs.in?igsh=cmVoNDEwZWhraWxi" target="_blank" rel="noreferrer" className="w-8 h-8 bg-pink-100 rounded-full flex items-center justify-center text-pink-600 hover:bg-pink-200 transition-colors"><Instagram className="w-4 h-4" /></a>
               </div>
@@ -1282,18 +1282,18 @@ const Dashboard = ({ user, onLogout, onUpdateProfile, toggleTheme, theme, course
             <div>
               <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4">Contact Us</h3>
               <ul className="space-y-4 text-sm text-slate-500 font-medium">
-                <li className="flex items-center gap-3">
+                <li className="flex items-center gap-3 justify-center md:justify-start">
                   <div className="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center text-sky-600"><div className="w-2 h-2 bg-sky-500 rounded-full"></div></div>
                   PAN-India Presence
                 </li>
-                <li className="flex items-center gap-3">
+                <li className="flex items-center gap-3 justify-center md:justify-start">
                   <div className="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center text-sky-600">@</div>
                   <a href="mailto:akhil@cloudailabs.in" className="hover:text-sky-600 transition-colors">akhil@cloudailabs.in</a>
                 </li>
               </ul>
             </div>
           </div>
-          <div className="border-t border-slate-100 dark:border-slate-800 mt-12 pt-8 text-center text-xs text-slate-400 font-medium">
+          <div className="border-t border-slate-100 dark:border-slate-800 mt-8 md:mt-12 pt-8 text-center text-xs text-slate-400 font-medium">
             © 2026 Cloud Ai Labs. All rights reserved. (NGO Reg. in process)
           </div>
         </div>
@@ -1343,7 +1343,7 @@ const CircularProgress = ({ progress, size = 120, strokeWidth = 10, color = "tex
 
 
 const StatCard = ({ label, value, sub, icon, progress, color, variant }) => (
-  <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-700 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group h-full flex flex-col justify-between">
+  <div className="bg-white dark:bg-slate-800 p-5 md:p-6 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-700 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group h-full flex flex-col justify-between">
     {variant === 'circle' ? (
       <div className="flex flex-col items-center justify-center text-center h-full gap-4">
         <div className="flex justify-between w-full mb-2">
@@ -1361,7 +1361,7 @@ const StatCard = ({ label, value, sub, icon, progress, color, variant }) => (
         <div className="flex justify-between items-start mb-6">
           <div>
             <p className="text-sm font-bold text-slate-400 dark:text-slate-500 tracking-wider uppercase mb-1">{label}</p>
-            <h3 className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">{value}</h3>
+            <h3 className="text-2xl md:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">{value}</h3>
           </div>
           <div className={`p-3 rounded-2xl bg-${color}-50 dark:bg-${color}-900/30 border border-${color}-100 dark:border-${color}-800 group-hover:bg-${color}-100 dark:group-hover:bg-${color}-900/50 transition-colors`}>{icon}</div>
         </div>
@@ -1588,7 +1588,7 @@ const HistoryList = ({ history }) => {
   );
 
   return (
-    <div className="relative pl-8 space-y-8 my-4 before:content-[''] before:absolute before:left-3.5 before:top-2 before:bottom-2 before:w-[2px] before:bg-slate-100 dark:before:bg-slate-700">
+    <div className="relative px-4 md:px-0 md:pl-8 space-y-4 md:space-y-8 my-4 md:before:content-[''] md:before:absolute md:before:left-3.5 md:before:top-2 md:before:bottom-2 md:before:w-[2px] md:before:bg-slate-100 md:dark:before:bg-slate-700">
       {history.map((item, idx) => {
         const isAWS = item.course?.includes("AWS");
         const isAI = item.course?.includes("AI") || item.course?.includes("Intelligence");
@@ -1615,9 +1615,9 @@ const HistoryList = ({ history }) => {
         const showHeader = dateStr !== prevDateStr;
 
         return (
-          <div key={idx} className={`relative group animate-in slide-in-from-bottom-2 duration-500 ${!showHeader ? 'mt-2' : ''}`} style={{ animationDelay: `${idx * 100}ms` }}>
-            {/* Timeline Node */}
-            <div className={`absolute -left-[29px] top-0 w-8 h-8 rounded-full border-4 border-white dark:border-slate-800 flex items-center justify-center z-10 
+          <div key={idx} className={`relative group animate-in slide-in-from-bottom-2 duration-500 ${!showHeader ? 'mt-4 md:mt-2' : ''}`} style={{ animationDelay: `${idx * 100}ms` }}>
+            {/* Timeline Node - Desktop Only */}
+            <div className={`hidden md:flex absolute -left-[29px] top-0 w-8 h-8 rounded-full border-4 border-white dark:border-slate-800 items-center justify-center z-10 
               ${isAWS ? 'bg-orange-100 text-orange-600' :
                 isAI ? 'bg-purple-100 text-purple-600' :
                   'bg-blue-100 text-blue-600'}`}>
@@ -1636,60 +1636,71 @@ const HistoryList = ({ history }) => {
 
             {/* If NOT showing header, show time inside card or above it? Let's keep card simple */}
 
-            {/* Card Content */}
-            <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 group-hover:shadow-md group-hover:border-slate-200 dark:group-hover:border-slate-600 transition-all">
+            {/* Card Content - Flat on Mobile, Card on Desktop */}
+            <div className="pb-6 border-b border-slate-50 dark:border-slate-700/50 last:border-0 md:bg-white md:dark:bg-slate-800 md:p-4 md:rounded-2xl md:shadow-sm md:border md:border-slate-100 md:dark:border-slate-700 md:group-hover:shadow-md md:group-hover:border-slate-200 md:dark:group-hover:border-slate-600 transition-all flex gap-4 md:block">
 
-              {/* Course & Time Header */}
-              <div className="mb-3 flex justify-between items-start gap-4">
-                <div className="flex flex-wrap gap-2">
-                  <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wide
-                    ${isAWS ? "bg-orange-50 text-orange-700 border border-orange-100" :
-                      isAI ? "bg-purple-50 text-purple-700 border border-purple-100" :
-                        "bg-blue-50 text-blue-700 border border-blue-100"
-                    }`}>
-                    {item.course || "General Learning"}
-                  </span>
-
-                  {/* Duration Badge */}
-                  {(item.duration || item.timeSpent) && (
-                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-100 text-[10px] font-bold uppercase tracking-wide">
-                      <Clock className="w-3 h-3" /> {item.duration || item.timeSpent}
-                    </span>
-                  )}
-                </div>
-
-                {/* Time Display */}
-                {item.time && (
-                  <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest bg-slate-50 dark:bg-slate-700/50 px-2 py-1 rounded-md whitespace-nowrap">
-                    {item.time}
-                  </span>
-                )}
+              {/* Mobile Icon Block - Integrated */}
+              <div className={`md:hidden shrink-0 w-10 h-10 rounded-xl flex items-center justify-center border border-slate-100 dark:border-slate-700 shadow-sm
+                ${isAWS ? 'bg-orange-50 text-orange-600' :
+                  isAI ? 'bg-purple-50 text-purple-600' :
+                    'bg-blue-50 text-blue-600'}`}>
+                <FileText className="w-5 h-5" />
               </div>
 
-              <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed font-medium whitespace-pre-wrap">
-                {item.learning || item.summary}
-              </p>
+              <div className="flex-1 min-w-0">
 
-              {/* Attachments / Footer */}
-              {(item.proof || item.file || item.issues === "Yes") && (
-                <div className="mt-4 pt-3 border-t border-slate-50 dark:border-slate-700 flex flex-wrap gap-2">
-                  {item.issues === "Yes" && (
-                    <span className="inline-flex items-center gap-1 text-[10px] font-bold text-red-600 bg-red-50 px-2 py-1 rounded-md">
-                      <AlertTriangle className="w-3 h-3" /> Issue Reported
+                {/* Course & Time Header */}
+                <div className="mb-3 flex justify-between items-start gap-4">
+                  <div className="flex flex-wrap gap-2">
+                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wide
+                    ${isAWS ? "bg-orange-50 text-orange-700 border border-orange-100" :
+                        isAI ? "bg-purple-50 text-purple-700 border border-purple-100" :
+                          "bg-blue-50 text-blue-700 border border-blue-100"
+                      }`}>
+                      {item.course || "General Learning"}
+                    </span>
+
+                    {/* Duration Badge */}
+                    {(item.duration || item.timeSpent) && (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-100 text-[10px] font-bold uppercase tracking-wide">
+                        <Clock className="w-3 h-3" /> {item.duration || item.timeSpent}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Time Display */}
+                  {item.time && (
+                    <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest bg-slate-50 dark:bg-slate-700/50 px-2 py-1 rounded-md whitespace-nowrap">
+                      {item.time}
                     </span>
                   )}
-                  {item.proof && (
-                    <a href={item.proof} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-[10px] font-bold text-slate-500 hover:text-sky-600 transition-colors">
-                      <ExternalLink className="w-3 h-3" /> Proof
-                    </a>
-                  )}
-                  {item.file && (
-                    <a href={item.file} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-[10px] font-bold text-slate-500 hover:text-sky-600 transition-colors">
-                      <Paperclip className="w-3 h-3" /> File
-                    </a>
-                  )}
                 </div>
-              )}
+
+                <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed font-medium whitespace-pre-wrap">
+                  {item.learning || item.summary}
+                </p>
+
+                {/* Attachments / Footer */}
+                {(item.proof || item.file || item.issues === "Yes") && (
+                  <div className="mt-4 pt-3 border-t border-slate-50 dark:border-slate-700 flex flex-wrap gap-2">
+                    {item.issues === "Yes" && (
+                      <span className="inline-flex items-center gap-1 text-[10px] font-bold text-red-600 bg-red-50 px-2 py-1 rounded-md">
+                        <AlertTriangle className="w-3 h-3" /> Issue Reported
+                      </span>
+                    )}
+                    {item.proof && (
+                      <a href={item.proof} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-[10px] font-bold text-slate-500 hover:text-sky-600 transition-colors">
+                        <ExternalLink className="w-3 h-3" /> Proof
+                      </a>
+                    )}
+                    {item.file && (
+                      <a href={item.file} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-[10px] font-bold text-slate-500 hover:text-sky-600 transition-colors">
+                        <Paperclip className="w-3 h-3" /> File
+                      </a>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         );
