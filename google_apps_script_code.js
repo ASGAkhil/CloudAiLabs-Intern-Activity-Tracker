@@ -365,6 +365,16 @@ function getUsers() {
         }
     }
 
+    // [NEW] Find "Course Updation" Column
+    let courseUpdateColIndex = -1;
+    for (let i = 0; i < headers.length; i++) {
+        const h = String(headers[i]).toLowerCase().trim();
+        if (h.includes("course updation") || h === "course updation") {
+            courseUpdateColIndex = i;
+            break;
+        }
+    }
+
     // Get Users Data - Grab ALL columns to ensure we get Email (simplest)
     const userDataRaw = sheetUsers.getRange(2, 1, sheetUsers.getLastRow() - 1, sheetUsers.getLastColumn()).getValues();
 
@@ -497,6 +507,10 @@ function getUsers() {
         const colVal = (monitorColIndex > -1) ? row[monitorColIndex] : false;
         const isMonitor = (colVal === true || String(colVal).toLowerCase() === "true");
 
+        // [NEW] Extended Course Access (Course Updation Column)
+        const updateVal = (courseUpdateColIndex > -1) ? row[courseUpdateColIndex] : false;
+        const hasExtendedAccess = (updateVal === true || String(updateVal).toLowerCase() === "true");
+
         return {
             name: name,
             internId: String(row[1]),
@@ -506,7 +520,8 @@ function getUsers() {
             lastLogDate: userStats[name] && userStats[name].latest ? userStats[name].latest : "",
             photo: photoUrl,
             isMonitor: isMonitor,
-            hasCourseAccess: isMonitor
+            hasCourseAccess: isMonitor,
+            hasExtendedCourseAccess: hasExtendedAccess // [NEW] Syncs to Frontend
         };
     });
 
@@ -517,7 +532,8 @@ function getUsers() {
         status: "Active",
         daysCompleted: 0,
         isMonitor: true,
-        hasCourseAccess: true
+        hasCourseAccess: true,
+        hasExtendedCourseAccess: true // Admin has everything
     });
 
     return ContentService.createTextOutput(JSON.stringify(users))

@@ -109,6 +109,33 @@ const COURSES = [
     // Since I can't see those lines in the previous `view_file` (which showed 100-899), I need to view the end of the file first.
     // I will skip this chunk for now and view the file first.
     guide: 'https://docs.google.com/document/d/1iokyFFtx1zXykOd-1TZRehl1lj29afvXUmNjkrpx01Q/edit?tab=t.0' // [NEW] Guide Link
+  },
+  {
+    id: 'cybersecurity',
+    title: 'Introduction to Cybersecurity (Cisco NetAcad)',
+    provider: 'Cisco Networking Academy',
+    link: 'https://www.netacad.com/courses/introduction-to-cybersecurity',
+    url: 'https://www.netacad.com/courses/introduction-to-cybersecurity',
+    color: 'red',
+    desc: 'Covers basic cybersecurity concepts, common threats, and system protection.'
+  },
+  {
+    id: 'googleit',
+    title: 'Google IT Support (Coursera)',
+    provider: 'Coursera / Google',
+    link: 'https://www.coursera.org/professional-certificates/google-it-support',
+    url: 'https://www.coursera.org/professional-certificates/google-it-support',
+    color: 'emerald',
+    desc: 'Builds core IT fundamentals such as networking, operating systems, and troubleshooting.'
+  },
+  {
+    id: 'prompteng',
+    title: 'Prompt Engineering (IBM SkillsBuild)',
+    provider: 'IBM SkillsBuild',
+    link: 'https://skillsbuild.org/college-students/course-catalog/prompt-engineering-shaping-better-ai-responses',
+    url: 'https://skillsbuild.org/college-students/course-catalog/prompt-engineering-shaping-better-ai-responses',
+    color: 'purple',
+    desc: 'Learn the art of crafting effective prompts for AI models.'
   }
 ];
 
@@ -474,8 +501,8 @@ const LoginScreen = ({ onLogin, users, toggleTheme, theme }) => {
               </div>
 
               <div className="text-center mb-6">
-                <div className="w-12 h-12 bg-sky-100 dark:bg-sky-900/30 rounded-full flex items-center justify-center mx-auto mb-3">
-                  <HelpCircle className="text-sky-500 w-6 h-6" />
+                <div className="w-24 h-24 bg-white dark:bg-slate-700 rounded-3xl flex items-center justify-center mx-auto mb-4 shadow-xl shadow-sky-100 dark:shadow-none ring-1 ring-slate-100 dark:ring-slate-600 p-4 animate-float">
+                  <img src={logo} alt="CloudAiLabs Logo" className="w-full h-full object-contain drop-shadow-md" />
                 </div>
                 <h3 className="text-xl font-bold text-slate-900 dark:text-white">Get Login ID</h3>
                 <p className="text-sm text-slate-500 dark:text-slate-400 max-w-xs mx-auto mt-2">
@@ -636,65 +663,103 @@ const LoginScreen = ({ onLogin, users, toggleTheme, theme }) => {
 };
 
 // --- NEW COMPONENT: COURSE TRACKER ---
-const CourseCard = ({ title, link, status, guide, onToggle }) => {
+const CourseCard = ({ title, link, status, guide, onToggle, locked, desc, provider, color }) => {
   // Status: 'not_started' | 'pursuing' | 'done'
   const isPursuing = status === 'pursuing';
   const isDone = status === 'done';
 
-  return (
-    <div className="bg-white dark:bg-slate-800 rounded-2xl p-5 shadow-sm border border-slate-200 dark:border-slate-700 hover:shadow-lg transition-all flex flex-col justify-between h-full group">
-      <div>
-        <div className="flex justify-between items-start mb-3">
-          <div className="p-2.5 rounded-xl bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 group-hover:bg-indigo-100 transition-colors">
-            <BookOpen className="w-5 h-5" />
+  if (locked) {
+    return (
+      <div className="bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-5 border border-slate-200 dark:border-slate-800 h-full flex flex-col justify-between opacity-75 grayscale-[0.5] relative overflow-hidden group">
+        {/* Lock Overlay */}
+        <div className="absolute inset-0 bg-slate-100/50 dark:bg-slate-900/50 backdrop-blur-[1px] flex items-center justify-center z-20 group-hover:bg-slate-100/30 transition-colors">
+          <div className="w-12 h-12 bg-slate-200 dark:bg-slate-800 rounded-full flex items-center justify-center shadow-inner border border-slate-300 dark:border-slate-700">
+            <Lock className="w-6 h-6 text-slate-400" />
           </div>
-          {isDone ? (
-            <span className="bg-emerald-100 text-emerald-700 text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wide border border-emerald-200 flex items-center gap-1">
-              <CheckCircle2 className="w-3 h-3" /> Done
-            </span>
-          ) : isPursuing ? (
-            <span className="bg-amber-100 text-amber-700 text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wide border border-amber-200 flex items-center gap-1">
-              <Clock className="w-3 h-3" /> Pursuing
-            </span>
-          ) : (
-            <span className="bg-slate-100 text-slate-500 text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wide border border-slate-200">
-              To Do
-            </span>
-          )}
         </div>
-        <h4 className="font-bold text-slate-900 dark:text-white mb-1 line-clamp-2">{title}</h4>
-        <div className="flex flex-col gap-2 mb-4">
-          <a href={link} target="_blank" rel="noreferrer" className="text-xs text-sky-600 hover:underline flex items-center gap-1">
-            View Course <ExternalLink className="w-3 h-3" />
-          </a>
-          {guide && (
-            <a href={guide} target="_blank" rel="noreferrer" className="text-xs font-bold text-indigo-600 hover:text-indigo-700 hover:underline flex items-center gap-1">
-              <BookOpen className="w-3 h-3" /> How to Start Guide
-            </a>
-          )}
+
+        <div>
+          <div className="flex justify-between items-start mb-3 blur-[1px]">
+            <div className="p-2.5 rounded-xl bg-slate-100 text-slate-400">
+              <BookOpen className="w-5 h-5" />
+            </div>
+            <span className="bg-slate-100 text-slate-400 text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wide border border-slate-200 flex items-center gap-1">
+              <Lock className="w-3 h-3" /> Locked
+            </span>
+          </div>
+          <h4 className="font-bold text-slate-500 dark:text-slate-500 mb-1 line-clamp-2">{title}</h4>
+          <p className="text-xs text-slate-400 mb-2">{provider}</p>
+        </div>
+        <div className="mt-auto blur-[1px]">
+          <button disabled className="w-full py-3 rounded-xl bg-slate-100 text-slate-400 border border-slate-200 text-xs font-bold">
+            Complete Prerequisites
+          </button>
         </div>
       </div>
+    );
+  }
 
-      <div className="grid grid-cols-2 gap-2 mt-auto">
-        <button
-          onClick={() => onToggle('pursuing')}
-          disabled={isDone} // Can't go back to pursuing if done? User might want to. Let's allow switching.
-          className={`py-3 rounded-xl text-xs font-bold transition-all border ${isPursuing
-            ? 'bg-amber-50 text-amber-700 border-amber-200 ring-2 ring-amber-100'
-            : 'bg-white text-slate-600 border-slate-200 hover:bg-amber-50 hover:text-amber-600'
-            }`}
-        >
-          Pursuing
-        </button>
-        <button
-          onClick={() => onToggle('done')}
-          className={`py-3 rounded-xl text-xs font-bold transition-all border ${isDone
-            ? 'bg-emerald-50 text-emerald-700 border-emerald-200 ring-2 ring-emerald-100'
-            : 'bg-white text-slate-600 border-slate-200 hover:bg-emerald-50 hover:text-emerald-600'
-            }`}
-        >
-          Done
-        </button>
+  return (
+    <div className="bg-white dark:bg-slate-800 rounded-2xl p-5 shadow-sm border border-slate-200 dark:border-slate-700 hover:shadow-lg transition-all flex flex-col justify-between h-full group relative overflow-hidden">
+      {/* Subtle Color Blob */}
+      <div className={`absolute -right-10 -top-10 w-24 h-24 rounded-full bg-${color}-50 dark:bg-${color}-900/10 blur-xl group-hover:scale-150 transition-transform duration-500 pointer-events-none`}></div>
+
+      <div className="relative z-10 flex flex-col h-full">
+        <div>
+          <div className="flex justify-between items-start mb-3">
+            <div className={`p-2.5 rounded-xl bg-${color}-50 dark:bg-slate-700 text-${color}-600 dark:text-${color}-400 group-hover:bg-${color}-100 transition-colors`}>
+              {status === 'done' ? <CheckCircle2 className="w-5 h-5" /> : <BookOpen className="w-5 h-5" />}
+            </div>
+            {isDone ? (
+              <span className="bg-emerald-100 text-emerald-700 text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wide border border-emerald-200 flex items-center gap-1">
+                <CheckCircle2 className="w-3 h-3" /> Done
+              </span>
+            ) : isPursuing ? (
+              <span className="bg-amber-100 text-amber-700 text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wide border border-amber-200 flex items-center gap-1">
+                <Clock className="w-3 h-3" /> Pursuing
+              </span>
+            ) : (
+              <span className="bg-slate-100 text-slate-500 text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wide border border-slate-200">
+                To Do
+              </span>
+            )}
+          </div>
+          <h4 className="font-bold text-slate-900 dark:text-white mb-1 line-clamp-2 leading-tight">{title}</h4>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mb-3 font-medium line-clamp-1">{provider}</p>
+
+          <div className="flex flex-col gap-2 mb-4">
+            <a href={link} target="_blank" rel="noreferrer" className="text-xs text-sky-600 hover:underline flex items-center gap-1 font-bold">
+              View Course <ExternalLink className="w-3 h-3" />
+            </a>
+            {guide && (
+              <a href={guide} target="_blank" rel="noreferrer" className="text-xs font-bold text-indigo-600 hover:text-indigo-700 hover:underline flex items-center gap-1">
+                <BookOpen className="w-3 h-3" /> How to Start Guide
+              </a>
+            )}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2 mt-auto">
+          <button
+            onClick={() => onToggle('pursuing')}
+            // Allow toggling back/forth freely
+            className={`py-3 rounded-xl text-xs font-bold transition-all border ${isPursuing
+              ? 'bg-amber-50 text-amber-700 border-amber-200 ring-2 ring-amber-100'
+              : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-amber-50 hover:text-amber-600'
+              }`}
+          >
+            Pursuing
+          </button>
+          <button
+            onClick={() => onToggle('done')}
+            className={`py-3 rounded-xl text-xs font-bold transition-all border ${isDone
+              ? 'bg-emerald-50 text-emerald-700 border-emerald-200 ring-2 ring-emerald-100'
+              : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-emerald-50 hover:text-emerald-600'
+              }`}
+          >
+            Done
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -744,14 +809,21 @@ const CourseTracker = ({ user, progress, onUpdateStatus, onViewCourses }) => {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-        {COURSES.map(course => (
-          <CourseCard
-            key={course.id}
-            {...course}
-            status={progress[course.id] || 'not_started'}
-            onToggle={(status) => handleToggle(course.id, status)}
-          />
-        ))}
+        {COURSES.map((course, index) => {
+          // Logic: First 4 always unlocked. Rest depend on user.hasExtendedCourseAccess
+          // Also, admin always has access.
+          const isLocked = index >= 4 && !user.hasExtendedCourseAccess && user.role !== 'admin';
+
+          return (
+            <CourseCard
+              key={course.id}
+              {...course}
+              status={progress[course.id] || 'not_started'}
+              onToggle={(status) => handleToggle(course.id, status)}
+              locked={isLocked}
+            />
+          );
+        })}
       </div>
     </div>
   );
@@ -1447,7 +1519,13 @@ const DailyLogForm = ({ user, onSuccess }) => {
               onChange={e => setFormData({ ...formData, course: e.target.value })}
               className="w-full text-sm pl-4 pr-10 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none appearance-none font-medium dark:text-white"
             >
-              {COURSES.map(c => <option key={c.id} value={c.title}>{c.title}</option>)}
+              {COURSES.filter((c, index) => {
+                // [FIX] Filter Dropdown: Only show unlocked courses
+                // First 4 (indices 0-3) are always unlocked.
+                // Rest (indices >= 4) require permission OR Admin role.
+                if (index < 4) return true;
+                return user.hasExtendedCourseAccess || user.role === 'admin';
+              }).map(c => <option key={c.id} value={c.title}>{c.title}</option>)}
               <option value="Other">Other</option>
             </select>
             <ChevronRight className="w-4 h-4 text-slate-400 absolute right-3 top-3.5 rotate-90 pointer-events-none" />
@@ -2595,10 +2673,36 @@ const CoursesSection = ({ user, statuses, onUpdateStatus, onBack }) => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {COURSES.map((course) => {
+        {COURSES.map((course, index) => {
           const status = statuses[course.id] || 'not_started';
           const isCompleted = status === 'completed';
           const isPursuing = status === 'pursuing';
+
+          // [NEW] Lock Logic
+          const isLocked = index >= 4 && !user.hasExtendedCourseAccess && user.role !== 'admin';
+
+          if (isLocked) {
+            return (
+              <div key={course.id} className="bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 relative overflow-hidden group opacity-75 grayscale-[0.5]">
+                <div className="absolute inset-0 bg-slate-100/50 dark:bg-slate-900/50 backdrop-blur-[1px] flex items-center justify-center z-20 group-hover:bg-slate-100/30 transition-colors">
+                  <div className="w-16 h-16 bg-slate-200 dark:bg-slate-800 rounded-full flex items-center justify-center shadow-inner border border-slate-300 dark:border-slate-700">
+                    <Lock className="w-8 h-8 text-slate-400" />
+                  </div>
+                </div>
+                <div className="blur-[1px]">
+                  <h3 className="text-xl font-bold text-slate-500 dark:text-slate-500 mb-1">{course.title}</h3>
+                  <p className="text-sm text-slate-400 mb-6 font-medium">Provided by {course.provider}</p>
+                  <div className="mt-6 flex flex-col gap-3">
+                    <div className="w-full h-10 rounded-xl bg-slate-200 dark:bg-slate-700/50 animate-pulse"></div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="h-8 rounded-lg bg-slate-200 dark:bg-slate-700/50"></div>
+                      <div className="h-8 rounded-lg bg-slate-200 dark:bg-slate-700/50"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          }
 
           return (
             <div key={course.id} className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-sm border border-slate-200 dark:border-slate-700 relative overflow-hidden group hover:shadow-xl transition-all duration-300">
