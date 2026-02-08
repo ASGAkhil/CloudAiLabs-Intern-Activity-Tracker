@@ -3,6 +3,7 @@ import { Upload, CheckCircle2, Clock, LogOut, LayoutDashboard, History, FileText
 import logo from './assets/logo.png';
 import SplashScreen from './SplashScreen'; // [NEW]
 import RocketLoader from './RocketLoader'; // [NEW]
+import { IsolatedDashboard } from './components/IsolatedDashboard'; // [NEW] Isolated Dashboard
 
 import { api } from './services/api';
 
@@ -2988,6 +2989,8 @@ const App = () => {
         user ? (
           user.role === 'admin' ? (
             <AdminDashboard user={user} onLogout={handleLogout} toggleTheme={toggleTheme} theme={theme} />
+          ) : user.name === 'Urvashi Verma' ? (
+            <IsolatedDashboard user={user} onLogout={handleLogout} />
           ) : (
             <Dashboard
               user={user}
